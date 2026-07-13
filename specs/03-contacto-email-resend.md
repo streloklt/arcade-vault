@@ -1,6 +1,6 @@
 # SPEC 03 — Envío real de correo en el formulario de contacto (Acerca de)
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 02
 > **Fecha:** 2026-07-13
 > **Objetivo:** Reemplazar el envío mock del formulario de contacto de `/acerca-de` por un envío real de correo vía Resend, agregando estados de carga y error tipo terminal sin alterar el diseño visual ya portado del template.
