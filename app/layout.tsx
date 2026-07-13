@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
-import { Press_Start_2P, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-
-const pixelFont = Press_Start_2P({
-  variable: "--font-pixel",
-  weight: "400",
-  subsets: ["latin"],
-});
-
-const monoFont = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-});
+import "./arcade.css";
+import { FontPreconnect } from "@/components/FontPreconnect";
+import { Nav } from "@/components/Nav";
 
 export const metadata: Metadata = {
   title: "Arcade Vault",
-  description: "Juega online y compite por puntos.",
+  description: "Plataforma para jugar online y competir por puntos.",
 };
 
 export default function RootLayout({
@@ -24,16 +15,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${pixelFont.variable} ${monoFont.variable} h-full antialiased`}
-    >
+    <html lang="es" className="h-full antialiased">
+      <head>
+        <FontPreconnect />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Courier+Prime:wght@400;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="min-h-full flex flex-col">
-        <div className="av-bg" aria-hidden="true" />
-        <div className="av-noise" aria-hidden="true" />
-        <div id="root" className="flex-1 flex flex-col">
-          <main className="av-main">{children}</main>
-        </div>
+        <div className="av-bg"></div>
+        <div className="av-noise"></div>
+        <Nav />
+        <main className="av-main">{children}</main>
+        <footer
+          style={{
+            borderTop: "1px solid var(--line)",
+            padding: "20px 32px",
+            textAlign: "center",
+            color: "var(--ink-faint)",
+            fontFamily: "var(--mono)",
+            fontSize: 11,
+            letterSpacing: "0.16em",
+          }}
+        >
+          © 2026 ARCADE VAULT · HECHO CON PIXELES Y NEÓN · v2.6.0
+        </footer>
       </body>
     </html>
   );
