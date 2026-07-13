@@ -17,9 +17,11 @@ export function Nav() {
     return subscribeToUserChanges(() => setUser(getStoredUser()));
   }, []);
 
-  const isActive = (name: "biblioteca" | "salon" | "auth") => {
-    if (name === "biblioteca") return pathname === "/" || pathname.startsWith("/juego");
+  const isActive = (name: "home" | "biblioteca" | "salon" | "about" | "auth") => {
+    if (name === "home") return pathname === "/";
+    if (name === "biblioteca") return pathname.startsWith("/biblioteca") || pathname.startsWith("/juego");
     if (name === "salon") return pathname.startsWith("/salon");
+    if (name === "about") return pathname.startsWith("/acerca-de");
     return pathname.startsWith("/auth");
   };
 
@@ -43,11 +45,17 @@ export function Nav() {
           </div>
         </div>
         <div className="links">
-          <Link href="/" className={isActive("biblioteca") ? "active" : ""}>
+          <Link href="/" className={isActive("home") ? "active" : ""}>
+            Inicio
+          </Link>
+          <Link href="/biblioteca" className={isActive("biblioteca") ? "active" : ""}>
             Biblioteca
           </Link>
           <Link href="/salon" className={isActive("salon") ? "active" : ""}>
             Salón de la Fama
+          </Link>
+          <Link href="/acerca-de" className={isActive("about") ? "active" : ""}>
+            Acerca de
           </Link>
         </div>
         <div className="spacer"></div>
@@ -81,11 +89,17 @@ export function Nav() {
         <div className="pixel neon-cyan" style={{ fontSize: 11, marginBottom: 16 }}>
           MENÚ
         </div>
-        <a className={isActive("biblioteca") ? "active" : ""} onClick={() => go("/")}>
+        <a className={isActive("home") ? "active" : ""} onClick={() => go("/")}>
+          Inicio
+        </a>
+        <a className={isActive("biblioteca") ? "active" : ""} onClick={() => go("/biblioteca")}>
           Biblioteca
         </a>
         <a className={isActive("salon") ? "active" : ""} onClick={() => go("/salon")}>
           Salón de la Fama
+        </a>
+        <a className={isActive("about") ? "active" : ""} onClick={() => go("/acerca-de")}>
+          Acerca de
         </a>
         <a className={isActive("auth") ? "active" : ""} onClick={() => go("/auth")}>
           {user ? "Cuenta" : "Iniciar Sesión"}
