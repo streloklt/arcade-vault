@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./arcade.css";
 import { FontPreconnect } from "@/components/FontPreconnect";
+import { Nav } from "@/components/Nav";
 
 export const metadata: Metadata = {
   title: "Arcade Vault",
@@ -22,7 +23,25 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <div className="av-bg"></div>
+        <div className="av-noise"></div>
+        <Nav />
+        <main className="av-main">{children}</main>
+        <footer
+          style={{
+            borderTop: "1px solid var(--line)",
+            padding: "20px 32px",
+            textAlign: "center",
+            color: "var(--ink-faint)",
+            fontFamily: "var(--mono)",
+            fontSize: 11,
+            letterSpacing: "0.16em",
+          }}
+        >
+          © 2026 ARCADE VAULT · HECHO CON PIXELES Y NEÓN · v2.6.0
+        </footer>
+      </body>
     </html>
   );
 }
