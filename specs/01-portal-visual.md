@@ -1,6 +1,6 @@
 # SPEC 01 — Portal visual de Arcade Vault
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** —
 > **Fecha:** 2026-07-13
 > **Objetivo:** Portar las 5 pantallas del prototipo visual (`references/templates/`) al App Router de Next.js como componentes React tipados con TypeScript, sin implementar lógica de ningún juego real.
