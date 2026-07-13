@@ -2,20 +2,18 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import type { User } from "@/lib/types";
-import { clearStoredUser, getStoredUser, subscribeToUserChanges } from "@/lib/storage";
+import { useState, useSyncExternalStore } from "react";
+import { clearStoredUser, getStoredUserSnapshot, subscribeToUserChanges } from "@/lib/storage";
+
+function getServerUserSnapshot() {
+  return null;
+}
 
 export function Nav() {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const user = useSyncExternalStore(subscribeToUserChanges, getStoredUserSnapshot, getServerUserSnapshot);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-    return subscribeToUserChanges(() => setUser(getStoredUser()));
-  }, []);
 
   const isActive = (name: "home" | "biblioteca" | "salon" | "about" | "auth") => {
     if (name === "home") return pathname === "/";
@@ -32,7 +30,6 @@ export function Nav() {
 
   const handleSignOut = () => {
     clearStoredUser();
-    setUser(null);
   };
 
   return (

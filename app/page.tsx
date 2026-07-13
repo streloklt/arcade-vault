@@ -257,7 +257,7 @@ export default function Home() {
       {/* WHY */}
       <section className="home-section reveal">
         <div className="section-head">
-          <div className="kicker pixel neon-magenta">// 01</div>
+          <div className="kicker pixel neon-magenta">{"// 01"}</div>
           <h2 className="section-title">¿POR QUÉ ARCADE VAULT?</h2>
           <div className="section-rule"></div>
         </div>
@@ -275,7 +275,7 @@ export default function Home() {
       {/* GAMES PREVIEW */}
       <section className="home-section reveal">
         <div className="section-head">
-          <div className="kicker pixel neon-cyan">// 02</div>
+          <div className="kicker pixel neon-cyan">{"// 02"}</div>
           <h2 className="section-title">JUEGOS DISPONIBLES AHORA</h2>
           <div className="section-rule"></div>
         </div>
@@ -311,7 +311,7 @@ export default function Home() {
       {/* RECENT ACTIVITY / LEADERBOARD */}
       <section className="home-section reveal">
         <div className="section-head">
-          <div className="kicker pixel neon-yellow">// 03</div>
+          <div className="kicker pixel neon-yellow">{"// 03"}</div>
           <h2 className="section-title">ACTIVIDAD EN VIVO</h2>
           <div className="section-rule"></div>
         </div>
@@ -361,7 +361,7 @@ export default function Home() {
       {/* PRICING */}
       <section className="home-section reveal">
         <div className="section-head">
-          <div className="kicker pixel neon-green">// 04</div>
+          <div className="kicker pixel neon-green">{"// 04"}</div>
           <h2 className="section-title">PRECIOS</h2>
           <div className="section-rule"></div>
         </div>

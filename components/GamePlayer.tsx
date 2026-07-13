@@ -9,14 +9,16 @@ export function GamePlayer({ game }: { game: Game }) {
   const router = useRouter();
   const [score, setScore] = useState(0);
   const [lives] = useState(3);
-  const [level, setLevel] = useState(1);
+  const level = Math.floor(score / 2500) + 1;
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [name, setName] = useState("INVITADO");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    // localStorage no existe en SSR; el nombre se lee tras montar y sigue siendo editable localmente.
     const user = getStoredUser();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- valor inicial hidratado desde localStorage, luego editable por el jugador
     if (user) setName(user.name);
   }, []);
 
@@ -26,14 +28,9 @@ export function GamePlayer({ game }: { game: Game }) {
     return () => clearInterval(t);
   }, [over, paused]);
 
-  useEffect(() => {
-    if (score > 0 && score % 2500 < 100) setLevel((l) => l + 1);
-  }, [score]);
-
   const endGame = () => setOver(true);
   const restart = () => {
     setScore(0);
-    setLevel(1);
     setPaused(false);
     setOver(false);
     setSaved(false);
