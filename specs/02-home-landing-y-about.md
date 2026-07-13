@@ -1,6 +1,6 @@
 # SPEC 02 — Home landing y página Acerca de
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-07-13
 > **Objetivo:** Portar las pantallas Home (landing) y Acerca de del prototipo (`references/templates/home-about/`) al App Router, moviendo la Biblioteca actual de `/` a `/biblioteca` y dejando `/` como la nueva landing.
