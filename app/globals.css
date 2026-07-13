@@ -1,8 +1,24 @@
 @import "tailwindcss";
 
+/* ===== ARCADE VAULT — theme ===== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0a0a0f;
+  --bg-2: #0f0f18;
+  --bg-3: #15151f;
+  --ink: #e6e9ff;
+  --ink-dim: #8a8fb5;
+  --ink-faint: #4a4f70;
+  --cyan: #00f5ff;
+  --magenta: #ff006e;
+  --yellow: #f5ff00;
+  --green: #00ff88;
+  --gold: #ffcf3a;
+  --silver: #c7d0e0;
+  --bronze: #d97a3a;
+  --line: rgba(0, 245, 255, 0.18);
+  --line-2: rgba(255, 255, 255, 0.06);
+  --pixel: var(--font-pixel), system-ui, monospace;
+  --mono: var(--font-mono), "Courier Prime", "Courier New", monospace;
 }
 
 @theme inline {
@@ -10,9 +26,9 @@
   --color-foreground: var(--foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
 }
