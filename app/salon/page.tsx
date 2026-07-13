@@ -1,19 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { GAMES, seededScores } from "@/lib/data";
-import type { User } from "@/lib/types";
-import { getStoredUser, subscribeToUserChanges } from "@/lib/storage";
+import { getStoredUserSnapshot, subscribeToUserChanges } from "@/lib/storage";
+
+function getServerUserSnapshot() {
+  return null;
+}
 
 export default function HallOfFamePage() {
   const [tab, setTab] = useState(GAMES[0].id);
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-    return subscribeToUserChanges(() => setUser(getStoredUser()));
-  }, []);
+  const user = useSyncExternalStore(subscribeToUserChanges, getStoredUserSnapshot, getServerUserSnapshot);
 
   const rows = useMemo(() => seededScores(tab.length * 23 + 7, 12), [tab]);
   const game = GAMES.find((g) => g.id === tab)!;
@@ -111,7 +109,7 @@ export default function HallOfFamePage() {
       </div>
 
       <div style={{ textAlign: "center", marginTop: 32 }}>
-        <Link href="/" className="btn lg">
+        <Link href="/biblioteca" className="btn lg">
           VOLVER A LA BIBLIOTECA
         </Link>
       </div>

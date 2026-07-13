@@ -12,6 +12,26 @@ export function getStoredUser(): User | null {
   }
 }
 
+let userSnapshotRaw: string | null = null;
+let userSnapshot: User | null = null;
+
+export function getStoredUserSnapshot(): User | null {
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem(USER_KEY);
+  } catch {
+    raw = null;
+  }
+  if (raw === userSnapshotRaw) return userSnapshot;
+  userSnapshotRaw = raw;
+  try {
+    userSnapshot = JSON.parse(raw || "null");
+  } catch {
+    userSnapshot = null;
+  }
+  return userSnapshot;
+}
+
 export function setStoredUser(user: User): void {
   try {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
