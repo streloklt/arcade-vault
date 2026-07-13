@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Este archivo da guía a Claude Code (claude.ai/code) para trabajar en este repositorio.
+Este archivo da guía a Claude Code (claude.ai/code) para tsrabajar en este repositorio y que siempre debe hablar en español.
 
 @AGENTS.md
 
@@ -37,3 +37,6 @@ npx skills@latest add Klerith/fernando-skills
 ```
 
 Usar `/spec` para producir una spec antes de implementar una feature, luego `/spec-impl` para implementar contra esa spec.
+
+## Skills
+Usa siempre /frontend-desing para diseñar la interfaz de usuario. 
