@@ -526,7 +526,7 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--line);
   overflow: hidden;
 }
-.detail-info { display: flex; flex-direction: column; gap: 16px; }
+.detail-info { display: flex; flex-direction: column; gap: 16px; transform: translateZ(0); }
 .detail-info h2 {
   margin: 0;
   font-family: var(--pixel);
@@ -554,6 +554,7 @@ a { color: inherit; text-decoration: none; }
 .leaderboard {
   border: 1px solid var(--line);
   background: var(--bg-2);
+  transform: translateZ(0);
 }
 .leaderboard h3 {
   margin: 0;
