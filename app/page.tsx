@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { GAMES } from "@/lib/data";
+import { GAMES, seededScores } from "@/lib/data";
 import { MiniCard } from "@/components/MiniCard";
 
 function useReveal() {
@@ -209,6 +209,13 @@ const FEATURES = [
   },
 ] as const;
 
+const RECENT_SCORES = GAMES.slice(0, 7).map((g) => ({
+  game: g,
+  row: seededScores(g.id.length * 23 + 7, 1)[0],
+}));
+
+const TOP_PLAYERS_TODAY = seededScores(GAMES[0].id.length * 23 + 7, 5);
+
 export default function Home() {
   useReveal();
   const router = useRouter();
@@ -298,6 +305,56 @@ export default function Home() {
               <div className="stat-s">{st.s}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* RECENT ACTIVITY / LEADERBOARD */}
+      <section className="home-section reveal">
+        <div className="section-head">
+          <div className="kicker pixel neon-yellow">// 03</div>
+          <h2 className="section-title">ACTIVIDAD EN VIVO</h2>
+          <div className="section-rule"></div>
+        </div>
+        <div className="activity-grid">
+          <div className="activity-card">
+            <div className="ac-head">
+              <div className="ac-title pixel">▸ ÚLTIMAS PUNTUACIONES</div>
+            </div>
+            <div className="ticker">
+              {RECENT_SCORES.map(({ game, row }, i) => (
+                <div key={game.id} className="tick-row" style={{ animationDelay: i * 60 + "ms" }}>
+                  <span className={"tk-p neon-" + game.color}>{row.name}</span>
+                  <span className="tk-mid">▸ {game.title}</span>
+                  <span className="tk-s">+{row.score.toLocaleString("es-ES")}</span>
+                  <span className="tk-t">{row.date}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="activity-card">
+            <div className="ac-head">
+              <div className="ac-title pixel neon-magenta">▸ TOP JUGADORES · HOY</div>
+              <button className="lb-link" onClick={() => router.push("/salon")}>
+                VER SALÓN →
+              </button>
+            </div>
+            <div className="top-list">
+              {TOP_PLAYERS_TODAY.map((row, i) => (
+                <div
+                  key={row.name}
+                  className={"top-row" + (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "")}
+                >
+                  <span className="tp-rk">#{String(row.rank).padStart(2, "0")}</span>
+                  <span className="tp-bar">
+                    <span className="tp-fill" style={{ width: 100 - i * 16 + "%" }}></span>
+                  </span>
+                  <span className="tp-p">{row.name}</span>
+                  <span className="tp-s">{row.score.toLocaleString("es-ES")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
