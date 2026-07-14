@@ -14,7 +14,7 @@
 - `lib/supabase/client.ts`: factory `createClient()` para uso en Client Components, usando `createBrowserClient` de `@supabase/ssr`. Valida que las env vars existan y lanza un error explícito si falta alguna.
 - `lib/supabase/server.ts`: factory `createClient()` async para uso en Server Components y Route Handlers, usando `createServerClient` de `@supabase/ssr` con el manejo de cookies vía `cookies()` de `next/headers` (API async en esta versión de Next). Misma validación de env vars que el cliente browser.
 - `lib/supabase/middleware.ts`: función `updateSession(request)` que crea un cliente Supabase ligado a la request/response del middleware y refresca la sesión llamando a `supabase.auth.getUser()`.
-- `middleware.ts` en la raíz del proyecto: invoca `updateSession()` en cada request, con un `matcher` que excluye assets estáticos (`_next/static`, `_next/image`, archivos con extensión de imagen/favicon).
+- `proxy.ts` en la raíz del proyecto (convención `middleware.ts` deprecada y renombrada a `proxy.ts` en esta versión de Next — ver `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`): invoca `updateSession()` en cada request, con un `matcher` que excluye assets estáticos (`_next/static`, `_next/image`, archivos con extensión de imagen/favicon).
 
 **Out of scope (para specs futuros):**
 
@@ -42,7 +42,7 @@ Ambas expuestas al cliente (`NEXT_PUBLIC_`) porque el anon key está diseñado p
 2. Crear `lib/supabase/client.ts` exportando `createClient()`, que llama a `createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)` de `@supabase/ssr`, lanzando `Error("Faltan las variables de entorno de Supabase")` si alguna falta. Verificación: `npm run build` compila; el archivo no se importa desde ningún lado todavía, así que no hay efecto visible.
 3. Crear `lib/supabase/server.ts` exportando `async function createClient()`, que hace `await cookies()` de `next/headers` y llama a `createServerClient` de `@supabase/ssr` pasando `getAll`/`setAll` sobre el cookie store, con la misma validación de env vars que el paso 2. Verificación: `npm run build` compila (tipos de `@supabase/ssr` resuelven correctamente contra la API async de `cookies()` de esta versión de Next).
 4. Crear `lib/supabase/middleware.ts` exportando `async function updateSession(request: NextRequest)`, que crea un `NextResponse` de paso, instancia un cliente Supabase ligado a las cookies de `request`/`response` (mismo patrón `getAll`/`setAll`), llama a `supabase.auth.getUser()` para refrescar el token si hay sesión, y devuelve el `response`. Verificación: `npm run build` compila; la función no está conectada a ningún request real todavía.
-5. Crear `middleware.ts` en la raíz, importando `updateSession` desde `lib/supabase/middleware.ts` y exportando `middleware(request)` que la invoca y retorna su resultado, junto con `export const config = { matcher: [...] }` que excluye `_next/static`, `_next/image`, `favicon.ico` y archivos de imagen. Verificación: paso 6 (última verificación del plan).
+5. Crear `proxy.ts` en la raíz, importando `updateSession` desde `lib/supabase/middleware.ts` y exportando `async function proxy(request)` que la invoca y retorna su resultado, junto con `export const config = { matcher: [...] }` que excluye `_next/static`, `_next/image`, `favicon.ico` y archivos de imagen. Verificación: paso 6 (última verificación del plan).
 6. Verificación final: `npm run build` compila sin errores de TypeScript ni de ESLint, y `npm run dev` levanta el servidor sin errores en consola al navegar cualquier página existente (el middleware corre en cada request sin romper nada, aunque no haya sesión activa).
 
 ## Acceptance criteria
@@ -53,7 +53,7 @@ Ambas expuestas al cliente (`NEXT_PUBLIC_`) porque el anon key está diseñado p
 - [ ] `lib/supabase/client.ts` exporta `createClient()` y lanza un error explícito si falta alguna env var de Supabase.
 - [ ] `lib/supabase/server.ts` exporta un `createClient()` async que usa `cookies()` de `next/headers` y lanza el mismo error explícito si falta alguna env var.
 - [ ] `lib/supabase/middleware.ts` exporta `updateSession(request)` que refresca la sesión vía `supabase.auth.getUser()` y devuelve un `NextResponse`.
-- [ ] `middleware.ts` en la raíz invoca `updateSession` y tiene un `matcher` que excluye assets estáticos.
+- [ ] `proxy.ts` en la raíz invoca `updateSession` y tiene un `matcher` que excluye assets estáticos.
 - [ ] `npm run dev` levanta el servidor y cualquier página existente (`/`, `/acerca-de`, `/auth`, `/biblioteca`) carga sin errores en consola.
 - [ ] `app/auth/page.tsx` y `lib/storage.ts` no fueron modificados.
 
