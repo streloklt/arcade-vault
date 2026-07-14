@@ -55,6 +55,7 @@ export const AsteroidsCanvas = forwardRef<
     if (started) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code !== "Space") return;
+      e.preventDefault();
       setStarted(true);
       gameRef.current?.start();
     };
@@ -80,14 +81,7 @@ export const AsteroidsCanvas = forwardRef<
   }));
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: 800,
-        height: 600,
-        maxWidth: "100%",
-      }}
-    >
+    <div style={{ position: "absolute", inset: 0 }}>
       <canvas
         ref={canvasRef}
         width={800}

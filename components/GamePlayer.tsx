@@ -49,7 +49,17 @@ export function GamePlayer({ game }: { game: Game }) {
   }, [isAsteroids, over, paused]);
 
   const handleAsteroidsStateChange = (state: AsteroidsState) => {
-    setAsteroidsState(state);
+    setAsteroidsState((prev) => {
+      const triple = Math.round(state.tripleShotRemaining * 10) / 10;
+      const prevTriple = Math.round(prev.tripleShotRemaining * 10) / 10;
+      const unchanged =
+        prev.score === state.score &&
+        prev.lives === state.lives &&
+        prev.level === state.level &&
+        prev.status === state.status &&
+        prevTriple === triple;
+      return unchanged ? prev : state;
+    });
     if (state.status === "gameover") setOver(true);
   };
 

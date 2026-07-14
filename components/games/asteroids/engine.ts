@@ -328,11 +328,21 @@ export function createAsteroidsGame(
     return !!val;
   }
 
+  const GAME_KEYS = new Set([
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    "Space",
+  ]);
+
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (GAME_KEYS.has(e.code)) e.preventDefault();
     if (!keys[e.code]) justPressed[e.code] = true;
     keys[e.code] = true;
   };
   const handleKeyUp = (e: KeyboardEvent) => {
+    if (GAME_KEYS.has(e.code)) e.preventDefault();
     keys[e.code] = false;
   };
 
@@ -504,39 +514,12 @@ export function createAsteroidsGame(
     });
   }
 
-  function drawLifeIcon(x: number, y: number) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(-Math.PI / 2);
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 1.2;
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(9, 0);
-    ctx.lineTo(-6, -5);
-    ctx.lineTo(-3, 0);
-    ctx.lineTo(-6, 5);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
-  }
-
   function drawHUD() {
-    ctx.fillStyle = "#fff";
-    ctx.font = "15px monospace";
-
-    ctx.textAlign = "left";
-    ctx.fillText(`SCORE  ${score}`, 14, 26);
-
-    ctx.textAlign = "center";
-    ctx.fillText(`NIVEL ${level}`, W / 2, 26);
-
-    for (let i = 0; i < lives; i++) drawLifeIcon(W - 16 - i * 22, 18);
-
     if (ship.tripleShot > 0) {
       ctx.textAlign = "left";
+      ctx.font = "15px monospace";
       ctx.fillStyle = "#0ff";
-      ctx.fillText(`3x  ${ship.tripleShot.toFixed(1)}s`, 14, 46);
+      ctx.fillText(`3x  ${ship.tripleShot.toFixed(1)}s`, 14, 26);
     }
   }
 
@@ -598,6 +581,7 @@ export function createAsteroidsGame(
     restart() {
       lastTime = null;
       initGame();
+      draw();
       onStateChange({
         score,
         lives,
