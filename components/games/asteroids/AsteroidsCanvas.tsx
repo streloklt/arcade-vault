@@ -70,9 +70,9 @@ export const AsteroidsCanvas = forwardRef<
       gameRef.current?.start();
     },
     restart() {
+      gameRef.current?.stop();
       gameRef.current?.restart();
-      setStarted(true);
-      gameRef.current?.start();
+      setStarted(false);
     },
     forceGameOver() {
       gameRef.current?.forceGameOver();

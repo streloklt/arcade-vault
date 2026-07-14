@@ -1,15 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Game } from "@/lib/data";
 import { getStoredUser, saveScore } from "@/lib/storage";
+import {
+  AsteroidsCanvas,
+  type AsteroidsCanvasHandle,
+} from "@/components/games/asteroids/AsteroidsCanvas";
+import type { AsteroidsState } from "@/components/games/asteroids/engine";
 
 export function GamePlayer({ game }: { game: Game }) {
   const router = useRouter();
-  const [score, setScore] = useState(0);
-  const [lives] = useState(3);
-  const level = Math.floor(score / 2500) + 1;
+  const isAsteroids = game.id === "asteroids";
+  const asteroidsRef = useRef<AsteroidsCanvasHandle>(null);
+  const [asteroidsState, setAsteroidsState] = useState<AsteroidsState>({
+    score: 0,
+    lives: 3,
+    level: 1,
+    tripleShotRemaining: 0,
+    status: "playing",
+  });
+  const [mockScore, setMockScore] = useState(0);
+  const score = isAsteroids ? asteroidsState.score : mockScore;
+  const lives = isAsteroids ? asteroidsState.lives : 3;
+  const level = isAsteroids
+    ? asteroidsState.level
+    : Math.floor(mockScore / 2500) + 1;
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [name, setName] = useState("INVITADO");
@@ -23,14 +40,38 @@ export function GamePlayer({ game }: { game: Game }) {
   }, []);
 
   useEffect(() => {
-    if (over || paused) return;
-    const t = setInterval(() => setScore((s) => s + Math.floor(10 + Math.random() * 90)), 220);
+    if (isAsteroids || over || paused) return;
+    const t = setInterval(
+      () => setMockScore((s) => s + Math.floor(10 + Math.random() * 90)),
+      220,
+    );
     return () => clearInterval(t);
-  }, [over, paused]);
+  }, [isAsteroids, over, paused]);
 
-  const endGame = () => setOver(true);
+  const handleAsteroidsStateChange = (state: AsteroidsState) => {
+    setAsteroidsState(state);
+    if (state.status === "gameover") setOver(true);
+  };
+
+  const endGame = () => {
+    if (isAsteroids) {
+      asteroidsRef.current?.forceGameOver();
+    } else {
+      setOver(true);
+    }
+  };
+
+  const togglePause = () => {
+    if (isAsteroids) {
+      if (paused) asteroidsRef.current?.resume();
+      else asteroidsRef.current?.pause();
+    }
+    setPaused((p) => !p);
+  };
+
   const restart = () => {
-    setScore(0);
+    if (isAsteroids) asteroidsRef.current?.restart();
+    setMockScore(0);
     setPaused(false);
     setOver(false);
     setSaved(false);
@@ -58,15 +99,24 @@ export function GamePlayer({ game }: { game: Game }) {
             <div className="l">Nivel</div>
             <div className="v">{String(level).padStart(2, "0")}</div>
           </div>
+          {isAsteroids && asteroidsState.tripleShotRemaining > 0 && (
+            <div className="hud-stat">
+              <div className="l">Power-up</div>
+              <div className="v">{`3X · ${asteroidsState.tripleShotRemaining.toFixed(1)}s`}</div>
+            </div>
+          )}
         </div>
         <div className="hud-actions">
-          <button className="btn yellow" onClick={() => setPaused((p) => !p)}>
+          <button className="btn yellow" onClick={togglePause}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>
           <button className="btn magenta" onClick={endGame}>
             FIN
           </button>
-          <button className="btn ghost" onClick={() => router.push(`/juego/${game.id}`)}>
+          <button
+            className="btn ghost"
+            onClick={() => router.push(`/juego/${game.id}`)}
+          >
             SALIR
           </button>
         </div>
@@ -74,22 +124,37 @@ export function GamePlayer({ game }: { game: Game }) {
 
       <div className="crt">
         <div className="crt-screen">
-          <div className="game-arena">
-            <div className="grid-floor"></div>
-            <div className="enemy e1"></div>
-            <div className="enemy e2"></div>
-            <div className="enemy e3"></div>
-            <div className="player-ship"></div>
-          </div>
+          {isAsteroids ? (
+            <AsteroidsCanvas
+              ref={asteroidsRef}
+              onStateChange={handleAsteroidsStateChange}
+            />
+          ) : (
+            <div className="game-arena">
+              <div className="grid-floor"></div>
+              <div className="enemy e1"></div>
+              <div className="enemy e2"></div>
+              <div className="enemy e3"></div>
+              <div className="player-ship"></div>
+            </div>
+          )}
           {paused && (
-            <div className="crt-content" style={{ background: "rgba(0,0,0,0.6)", zIndex: 5 }}>
+            <div
+              className="crt-content"
+              style={{ background: "rgba(0,0,0,0.6)", zIndex: 5 }}
+            >
               <div>
                 <div className="pixel neon-yellow" style={{ fontSize: 22 }}>
                   EN PAUSA
                 </div>
                 <div
                   className="mono"
-                  style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10, letterSpacing: "0.16em" }}
+                  style={{
+                    fontSize: 11,
+                    color: "var(--ink-dim)",
+                    marginTop: 10,
+                    letterSpacing: "0.16em",
+                  }}
                 >
                   PULSA REANUDAR PARA CONTINUAR
                 </div>
@@ -99,9 +164,7 @@ export function GamePlayer({ game }: { game: Game }) {
         </div>
         <div className="crt-bottom">
           <span className="led">SEÑAL OK</span>
-          <span>
-            {game.title} · CRT-83 · 60 HZ
-          </span>
+          <span>{game.title} · CRT-83 · 60 HZ</span>
           <span>CARGA · 1MB</span>
         </div>
       </div>
@@ -116,7 +179,9 @@ export function GamePlayer({ game }: { game: Game }) {
               <div className="input-row">
                 <input
                   value={name}
-                  onChange={(e) => setName(e.target.value.toUpperCase().slice(0, 10))}
+                  onChange={(e) =>
+                    setName(e.target.value.toUpperCase().slice(0, 10))
+                  }
                   placeholder="TUS INICIALES"
                 />
                 <button
@@ -136,7 +201,10 @@ export function GamePlayer({ game }: { game: Game }) {
               <button className="btn" onClick={restart}>
                 JUGAR DE NUEVO
               </button>
-              <button className="btn magenta" onClick={() => router.push("/biblioteca")}>
+              <button
+                className="btn magenta"
+                onClick={() => router.push("/biblioteca")}
+              >
                 VOLVER AL VAULT
               </button>
             </div>
