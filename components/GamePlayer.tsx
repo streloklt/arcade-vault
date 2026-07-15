@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Game } from "@/lib/data";
-import { getStoredUser, saveScore } from "@/lib/storage";
+import { getStoredUser } from "@/lib/storage";
 import {
   AsteroidsCanvas,
   type AsteroidsCanvasHandle,
@@ -197,8 +197,16 @@ export function GamePlayer({ game }: { game: Game }) {
                 <button
                   className="btn yellow"
                   onClick={() => {
-                    saveScore({ game: game.id, score, name });
                     setSaved(true);
+                    fetch("/api/scores", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        game_id: game.id,
+                        name,
+                        score,
+                      }),
+                    });
                   }}
                 >
                   GUARDAR PUNTUACIÓN
