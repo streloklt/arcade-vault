@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Game } from "@/lib/data";
+import type { Game } from "@/lib/games";
 import { getStoredUser } from "@/lib/storage";
 import {
   AsteroidsCanvas,
