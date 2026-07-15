@@ -1,7 +1,6 @@
-import type { SavedScore, User } from "@/lib/types";
+import type { User } from "@/lib/types";
 
 const USER_KEY = "av_user";
-const SCORES_KEY = "av_scores";
 const USER_CHANGE_EVENT = "av-user-change";
 
 export function getStoredUser(): User | null {
@@ -53,20 +52,4 @@ export function subscribeToUserChanges(callback: () => void): () => void {
     window.removeEventListener(USER_CHANGE_EVENT, callback);
     window.removeEventListener("storage", callback);
   };
-}
-
-export function saveScore(entry: Omit<SavedScore, "at">): void {
-  try {
-    const all: SavedScore[] = JSON.parse(localStorage.getItem(SCORES_KEY) || "[]");
-    all.push({ ...entry, at: Date.now() });
-    localStorage.setItem(SCORES_KEY, JSON.stringify(all));
-  } catch {}
-}
-
-export function getStoredScores(): SavedScore[] {
-  try {
-    return JSON.parse(localStorage.getItem(SCORES_KEY) || "[]");
-  } catch {
-    return [];
-  }
 }
