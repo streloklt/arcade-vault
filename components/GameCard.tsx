@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { Game } from "@/lib/data";
+import type { Game } from "@/lib/games";
 
 export function GameCard({ game }: { game: Game }) {
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -47,7 +47,12 @@ export function GameCard({ game }: { game: Game }) {
           </div>
           <button
             className={
-              "btn " + (game.color === "magenta" ? "magenta" : game.color === "yellow" ? "yellow" : "")
+              "btn " +
+              (game.color === "magenta"
+                ? "magenta"
+                : game.color === "yellow"
+                  ? "yellow"
+                  : "")
             }
             onClick={(e) => {
               e.stopPropagation();
