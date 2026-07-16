@@ -11,6 +11,7 @@ import {
   type AsteroidsCanvasHandle,
 } from "@/components/games/asteroids/AsteroidsCanvas";
 import type { AsteroidsState } from "@/components/games/asteroids/engine";
+import { ArkanoidCanvas } from "@/components/games/arkanoid/ArkanoidCanvas";
 import { TetrisCanvas } from "@/components/games/tetris/TetrisCanvas";
 
 export interface GameCanvasHandle {
@@ -74,5 +75,9 @@ export const GAME_ENGINES: Record<string, GameEngine> = {
   tetris: {
     Canvas: TetrisCanvas,
     initialState: { score: 0, lives: 1, level: 1, status: "playing" },
+  },
+  arkanoid: {
+    Canvas: ArkanoidCanvas,
+    initialState: { score: 0, lives: 3, level: 1, status: "playing" },
   },
 };
