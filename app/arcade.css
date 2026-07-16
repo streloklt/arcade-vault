@@ -780,10 +780,10 @@ a {
   filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.6));
 }
 
-.cover-rocas {
+.cover-asteroids {
   background: radial-gradient(circle at 50% 50%, #0a0a30, #000);
 }
-.cover-rocas::after {
+.cover-asteroids::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -795,7 +795,7 @@ a {
     radial-gradient(circle at 12% 70%, var(--cyan) 0 2px, transparent 3px),
     radial-gradient(circle at 60% 20%, var(--cyan) 0 2px, transparent 3px);
 }
-.cover-rocas::before {
+.cover-asteroids::before {
   content: "▲";
   position: absolute;
   left: 48%;

@@ -5,28 +5,27 @@ import { useRouter } from "next/navigation";
 import type { Game } from "@/lib/games";
 import { getStoredUser } from "@/lib/storage";
 import {
-  AsteroidsCanvas,
-  type AsteroidsCanvasHandle,
-} from "@/components/games/asteroids/AsteroidsCanvas";
-import type { AsteroidsState } from "@/components/games/asteroids/engine";
+  GAME_ENGINES,
+  type GameCanvasHandle,
+  type GameState,
+} from "@/components/games/registry";
 
 export function GamePlayer({ game }: { game: Game }) {
   const router = useRouter();
-  const isAsteroids = game.id === "asteroids";
-  const asteroidsRef = useRef<AsteroidsCanvasHandle>(null);
-  const [asteroidsState, setAsteroidsState] = useState<AsteroidsState>({
-    score: 0,
-    lives: 3,
-    level: 1,
-    tripleShotRemaining: 0,
-    status: "playing",
-  });
+  const engine = GAME_ENGINES[game.id];
+  const canvasRef = useRef<GameCanvasHandle>(null);
+  const [engineState, setEngineState] = useState<GameState>(
+    engine?.initialState ?? {
+      score: 0,
+      lives: 3,
+      level: 1,
+      status: "playing",
+    },
+  );
   const [mockScore, setMockScore] = useState(0);
-  const score = isAsteroids ? asteroidsState.score : mockScore;
-  const lives = isAsteroids ? asteroidsState.lives : 3;
-  const level = isAsteroids
-    ? asteroidsState.level
-    : Math.floor(mockScore / 2500) + 1;
+  const score = engine ? engineState.score : mockScore;
+  const lives = engine ? engineState.lives : 3;
+  const level = engine ? engineState.level : Math.floor(mockScore / 2500) + 1;
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [name, setName] = useState("INVITADO");
@@ -40,47 +39,45 @@ export function GamePlayer({ game }: { game: Game }) {
   }, []);
 
   useEffect(() => {
-    if (isAsteroids || over || paused) return;
+    if (engine || over || paused) return;
     const t = setInterval(
       () => setMockScore((s) => s + Math.floor(10 + Math.random() * 90)),
       220,
     );
     return () => clearInterval(t);
-  }, [isAsteroids, over, paused]);
+  }, [engine, over, paused]);
 
-  const handleAsteroidsStateChange = (state: AsteroidsState) => {
-    setAsteroidsState((prev) => {
-      const triple = Math.round(state.tripleShotRemaining * 10) / 10;
-      const prevTriple = Math.round(prev.tripleShotRemaining * 10) / 10;
+  const handleStateChange = (state: GameState) => {
+    setEngineState((prev) => {
       const unchanged =
         prev.score === state.score &&
         prev.lives === state.lives &&
         prev.level === state.level &&
         prev.status === state.status &&
-        prevTriple === triple;
+        JSON.stringify(prev.extraStats) === JSON.stringify(state.extraStats);
       return unchanged ? prev : state;
     });
     if (state.status === "gameover") setOver(true);
   };
 
   const endGame = () => {
-    if (isAsteroids) {
-      asteroidsRef.current?.forceGameOver();
+    if (engine) {
+      canvasRef.current?.forceGameOver();
     } else {
       setOver(true);
     }
   };
 
   const togglePause = () => {
-    if (isAsteroids) {
-      if (paused) asteroidsRef.current?.resume();
-      else asteroidsRef.current?.pause();
+    if (engine) {
+      if (paused) canvasRef.current?.resume();
+      else canvasRef.current?.pause();
     }
     setPaused((p) => !p);
   };
 
   const restart = () => {
-    if (isAsteroids) asteroidsRef.current?.restart();
+    if (engine) canvasRef.current?.restart();
     setMockScore(0);
     setPaused(false);
     setOver(false);
@@ -109,12 +106,13 @@ export function GamePlayer({ game }: { game: Game }) {
             <div className="l">Nivel</div>
             <div className="v">{String(level).padStart(2, "0")}</div>
           </div>
-          {isAsteroids && asteroidsState.tripleShotRemaining > 0 && (
-            <div className="hud-stat">
-              <div className="l">Power-up</div>
-              <div className="v">{`3X · ${asteroidsState.tripleShotRemaining.toFixed(1)}s`}</div>
-            </div>
-          )}
+          {engine &&
+            engineState.extraStats?.map((stat) => (
+              <div className="hud-stat" key={stat.label}>
+                <div className="l">{stat.label}</div>
+                <div className="v">{stat.value}</div>
+              </div>
+            ))}
         </div>
         <div className="hud-actions">
           <button className="btn yellow" onClick={togglePause}>
@@ -134,11 +132,8 @@ export function GamePlayer({ game }: { game: Game }) {
 
       <div className="crt">
         <div className="crt-screen">
-          {isAsteroids ? (
-            <AsteroidsCanvas
-              ref={asteroidsRef}
-              onStateChange={handleAsteroidsStateChange}
-            />
+          {engine ? (
+            <engine.Canvas ref={canvasRef} onStateChange={handleStateChange} />
           ) : (
             <div className="game-arena">
               <div className="grid-floor"></div>
