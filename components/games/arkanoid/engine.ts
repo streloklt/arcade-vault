@@ -1,0 +1,555 @@
+import type { GameState } from "@/components/games/registry";
+
+const CANVAS_W = 800;
+
+const PADDLE_SPEED = 400;
+const BLOCK_COLS = 10;
+const BLOCK_W = 64;
+const BLOCK_H = 24;
+const BLOCKS_ORIGIN_X = (CANVAS_W - BLOCK_COLS * BLOCK_W) / 2;
+const BLOCKS_ORIGIN_Y = 80;
+const BASE_BALL_VX = 200;
+const BASE_BALL_VY = -300;
+
+const SPRITESHEET_SRC = "/games/arkanoid/spritesheet-breakout.png";
+const BOUNCE_SOUND_SRC = "/games/arkanoid/sounds/ball-bounce.mp3";
+const BREAK_SOUND_SRC = "/games/arkanoid/sounds/break-sound.mp3";
+
+interface SpriteFrame {
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+}
+
+const EXPLOSION_FRAMES: Record<string, SpriteFrame[]> = {
+  red: [
+    { sx: 256, sy: 176, sw: 32, sh: 16 },
+    { sx: 288, sy: 176, sw: 32, sh: 16 },
+    { sx: 320, sy: 176, sw: 32, sh: 16 },
+    { sx: 352, sy: 176, sw: 32, sh: 16 },
+  ],
+  cyan: [
+    { sx: 256, sy: 192, sw: 32, sh: 16 },
+    { sx: 288, sy: 192, sw: 32, sh: 16 },
+    { sx: 320, sy: 192, sw: 32, sh: 16 },
+    { sx: 352, sy: 192, sw: 32, sh: 16 },
+  ],
+  green: [
+    { sx: 256, sy: 208, sw: 32, sh: 16 },
+    { sx: 288, sy: 208, sw: 32, sh: 16 },
+    { sx: 320, sy: 208, sw: 32, sh: 16 },
+    { sx: 352, sy: 208, sw: 32, sh: 16 },
+  ],
+  magenta: [
+    { sx: 256, sy: 224, sw: 32, sh: 16 },
+    { sx: 288, sy: 224, sw: 32, sh: 16 },
+    { sx: 320, sy: 224, sw: 32, sh: 16 },
+    { sx: 352, sy: 224, sw: 32, sh: 16 },
+  ],
+  yellow: [
+    { sx: 256, sy: 240, sw: 32, sh: 16 },
+    { sx: 288, sy: 240, sw: 32, sh: 16 },
+    { sx: 320, sy: 240, sw: 32, sh: 16 },
+    { sx: 352, sy: 240, sw: 32, sh: 16 },
+  ],
+  hotpink: [
+    { sx: 256, sy: 256, sw: 32, sh: 16 },
+    { sx: 288, sy: 256, sw: 32, sh: 16 },
+    { sx: 320, sy: 256, sw: 32, sh: 16 },
+    { sx: 352, sy: 256, sw: 32, sh: 16 },
+  ],
+  gray: [
+    { sx: 256, sy: 176, sw: 32, sh: 16 },
+    { sx: 288, sy: 176, sw: 32, sh: 16 },
+    { sx: 320, sy: 176, sw: 32, sh: 16 },
+    { sx: 352, sy: 176, sw: 32, sh: 16 },
+  ],
+};
+
+const EXPLOSION_DURATION = 150;
+
+const SPRITES: { paddle: SpriteFrame; ball: SpriteFrame } = {
+  paddle: { sx: 32, sy: 112, sw: 162, sh: 14 },
+  ball: { sx: 32, sy: 32, sw: 16, sh: 16 },
+};
+
+const BLOCK_SPRITES: Record<string, SpriteFrame> = {
+  gray: { sx: 32, sy: 288, sw: 32, sh: 16 },
+  red: { sx: 32, sy: 176, sw: 32, sh: 16 },
+  yellow: { sx: 32, sy: 240, sw: 32, sh: 16 },
+  cyan: { sx: 32, sy: 192, sw: 32, sh: 16 },
+  magenta: { sx: 32, sy: 224, sw: 32, sh: 16 },
+  hotpink: { sx: 32, sy: 256, sw: 32, sh: 16 },
+  green: { sx: 32, sy: 208, sw: 32, sh: 16 },
+};
+
+interface LevelBlockDef {
+  col: number;
+  row: number;
+  color: string;
+}
+
+interface LevelDef {
+  speed: number;
+  blocks: LevelBlockDef[];
+}
+
+const LEVELS: LevelDef[] = (() => {
+  const rowColors1 = ["red", "yellow", "cyan", "magenta", "hotpink", "green"];
+  const rowColors2 = ["gray", "cyan", "hotpink", "yellow", "magenta", "green"];
+  const rowColors4 = ["cyan", "magenta", "green", "yellow", "hotpink", "red"];
+
+  const l1: LevelBlockDef[] = [];
+  for (let row = 0; row < 6; row++)
+    for (let col = 0; col < 10; col++)
+      l1.push({ col, row, color: rowColors1[row] });
+
+  const l2: LevelBlockDef[] = [];
+  const pyStart = [4, 3, 2, 1, 0, 0];
+  const pyEnd = [5, 6, 7, 8, 9, 9];
+  for (let row = 0; row < 6; row++)
+    for (let col = pyStart[row]; col <= pyEnd[row]; col++)
+      l2.push({ col, row, color: rowColors2[row] });
+
+  const l3: LevelBlockDef[] = [];
+  for (let row = 0; row < 6; row++)
+    for (let col = 0; col < 10; col++)
+      if ((col + row) % 2 === 0)
+        l3.push({ col, row, color: row < 3 ? "yellow" : "magenta" });
+
+  const gaps4 = [
+    [2, 5, 8],
+    [0, 4, 7, 9],
+    [1, 3, 6],
+    [2, 5, 8, 9],
+    [0, 4, 7],
+    [1, 3, 6, 9],
+  ];
+  const l4: LevelBlockDef[] = [];
+  for (let row = 0; row < 6; row++)
+    for (let col = 0; col < 10; col++)
+      if (!gaps4[row].includes(col))
+        l4.push({ col, row, color: rowColors4[row] });
+
+  const l5: LevelBlockDef[] = [];
+  for (let row = 0; row < 6; row++)
+    for (let col = 0; col < 10; col++) {
+      const isFrame = col === 0 || col === 9 || row === 0 || row === 5;
+      const isCross = col === 4 || row === 2;
+      if (isFrame || isCross)
+        l5.push({
+          col,
+          row,
+          color: isCross && !isFrame ? "hotpink" : "cyan",
+        });
+    }
+
+  return [
+    { speed: 1.0, blocks: l1 },
+    { speed: 1.1, blocks: l2 },
+    { speed: 1.21, blocks: l3 },
+    { speed: 1.33, blocks: l4 },
+    { speed: 1.46, blocks: l5 },
+  ];
+})();
+
+interface Paddle {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface Ball {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  vx: number;
+  vy: number;
+}
+
+interface GameBlock {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+  alive: boolean;
+}
+
+interface Explosion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+  elapsed: number;
+}
+
+export interface ArkanoidGame {
+  start(): void; // arranca el requestAnimationFrame loop (espera a que el spritesheet cargue)
+  stop(): void; // cancela el loop (usado por PAUSA y por unmount)
+  restart(): void; // reproduce initPaddle()+loadLevel(1): score=0, lives=3, nivel=1
+  forceGameOver(): void; // fuerza status="gameover" (usado por el botón FIN)
+  destroy(): void; // limpia listeners de teclado/mouse y cancela el loop (unmount)
+}
+
+export function createArkanoidGame(
+  canvas: HTMLCanvasElement,
+  onStateChange: (state: GameState) => void,
+): ArkanoidGame {
+  const ctx = canvas.getContext("2d")!;
+
+  const bounceSound = new Audio(BOUNCE_SOUND_SRC);
+  const breakSound = new Audio(BREAK_SOUND_SRC);
+
+  const playSound = (sound: HTMLAudioElement) => {
+    (sound.cloneNode() as HTMLAudioElement).play().catch(() => {});
+  };
+
+  let ssImg: HTMLCanvasElement | null = null;
+  let ssLoaded = false;
+  let ssLoadStarted = false;
+  const ssCallbacks: (() => void)[] = [];
+
+  function loadSpritesheet(cb: () => void) {
+    if (ssLoaded) {
+      cb();
+      return;
+    }
+    ssCallbacks.push(cb);
+    if (ssLoadStarted) return;
+    ssLoadStarted = true;
+
+    const rawImg = new Image();
+    rawImg.onload = () => {
+      const oc = document.createElement("canvas");
+      oc.width = rawImg.width;
+      oc.height = rawImg.height;
+      const octx = oc.getContext("2d")!;
+      octx.drawImage(rawImg, 0, 0);
+      ssImg = oc;
+      ssLoaded = true;
+      ssCallbacks.forEach((f) => f());
+      ssCallbacks.length = 0;
+    };
+    rawImg.onerror = () => console.error("Failed to load spritesheet");
+    rawImg.src = SPRITESHEET_SRC;
+  }
+
+  function drawFrame(
+    frame: SpriteFrame,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ) {
+    if (!ssLoaded || !ssImg) return;
+    ctx.drawImage(ssImg, frame.sx, frame.sy, frame.sw, frame.sh, x, y, w, h);
+  }
+
+  function drawSprite(
+    sprite: SpriteFrame | undefined,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ) {
+    if (!ssLoaded || !ssImg || !sprite) return;
+    ctx.drawImage(
+      ssImg,
+      sprite.sx,
+      sprite.sy,
+      sprite.sw,
+      sprite.sh,
+      x,
+      y,
+      w,
+      h,
+    );
+  }
+
+  const paddle: Paddle = { x: 0, y: 560, w: 81, h: 14 };
+  const ball: Ball = { x: 0, y: 0, w: 16, h: 16, vx: 200, vy: -300 };
+  let blocks: GameBlock[] = [];
+  let explosions: Explosion[] = [];
+  let lives = 3;
+  let score = 0;
+  let gameState: "playing" | "gameover" = "playing";
+  let currentLevel = 1;
+
+  const keys: Record<string, boolean> = { ArrowLeft: false, ArrowRight: false };
+
+  let rafId: number | null = null;
+  let lastTime: number | null = null;
+  let startPending = false;
+
+  function initPaddle() {
+    paddle.x = (canvas.width - paddle.w) / 2;
+  }
+
+  function initBall() {
+    const speed = LEVELS[currentLevel - 1].speed;
+    ball.x = paddle.x + (paddle.w - ball.w) / 2;
+    ball.y = paddle.y - ball.h;
+    ball.vx = BASE_BALL_VX * speed;
+    ball.vy = BASE_BALL_VY * speed;
+  }
+
+  function loadLevel(n: number) {
+    currentLevel = n;
+    const level = LEVELS[n - 1];
+    blocks = level.blocks.map((b) => ({
+      x: BLOCKS_ORIGIN_X + b.col * BLOCK_W,
+      y: BLOCKS_ORIGIN_Y + b.row * BLOCK_H,
+      w: BLOCK_W,
+      h: BLOCK_H,
+      color: b.color,
+      alive: true,
+    }));
+    explosions = [];
+    ball.x = paddle.x + (paddle.w - ball.w) / 2;
+    ball.y = paddle.y - ball.h;
+    ball.vx = BASE_BALL_VX * level.speed;
+    ball.vy = BASE_BALL_VY * level.speed;
+  }
+
+  function collideAABB(block: GameBlock): boolean {
+    return (
+      ball.x < block.x + block.w &&
+      ball.x + ball.w > block.x &&
+      ball.y < block.y + block.h &&
+      ball.y + ball.h > block.y
+    );
+  }
+
+  function notifyState() {
+    onStateChange({
+      score,
+      lives,
+      level: currentLevel,
+      status: gameState === "gameover" ? "gameover" : "playing",
+      extraStats: [{ label: "Nivel", value: `${currentLevel}/5` }],
+    });
+  }
+
+  function update(dt: number) {
+    if (gameState !== "playing") return;
+
+    if (keys.ArrowLeft) paddle.x = Math.max(0, paddle.x - PADDLE_SPEED * dt);
+    if (keys.ArrowRight)
+      paddle.x = Math.min(
+        canvas.width - paddle.w,
+        paddle.x + PADDLE_SPEED * dt,
+      );
+
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+
+    if (ball.x <= 0) {
+      ball.x = 0;
+      ball.vx = Math.abs(ball.vx);
+      playSound(bounceSound);
+    }
+    if (ball.x + ball.w >= canvas.width) {
+      ball.x = canvas.width - ball.w;
+      ball.vx = -Math.abs(ball.vx);
+      playSound(bounceSound);
+    }
+    if (ball.y <= 0) {
+      ball.y = 0;
+      ball.vy = Math.abs(ball.vy);
+      playSound(bounceSound);
+    }
+
+    if (
+      ball.vy > 0 &&
+      ball.x + ball.w > paddle.x &&
+      ball.x < paddle.x + paddle.w &&
+      ball.y + ball.h >= paddle.y &&
+      ball.y + ball.h <= paddle.y + paddle.h + 8
+    ) {
+      ball.y = paddle.y - ball.h;
+      ball.vy = -Math.abs(ball.vy);
+      playSound(bounceSound);
+    }
+
+    for (const block of blocks) {
+      if (!block.alive) continue;
+      if (collideAABB(block)) {
+        block.alive = false;
+        explosions.push({
+          x: block.x,
+          y: block.y,
+          w: block.w,
+          h: block.h,
+          color: block.color,
+          elapsed: 0,
+        });
+        score += 10;
+        ball.vy = -ball.vy;
+        playSound(breakSound);
+        if (blocks.every((b) => !b.alive)) {
+          if (currentLevel < 5) loadLevel(currentLevel + 1);
+          else gameState = "gameover";
+        }
+        break;
+      }
+    }
+
+    for (const exp of explosions) exp.elapsed += dt * 1000;
+    explosions = explosions.filter((exp) => exp.elapsed < EXPLOSION_DURATION);
+
+    if (ball.y > canvas.height) {
+      lives--;
+      if (lives <= 0) {
+        lives = 0;
+        gameState = "gameover";
+      } else {
+        initBall();
+      }
+    }
+
+    notifyState();
+  }
+
+  function draw() {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (const block of blocks) {
+      if (block.alive)
+        drawSprite(
+          BLOCK_SPRITES[block.color],
+          block.x,
+          block.y,
+          block.w,
+          block.h,
+        );
+    }
+
+    for (const exp of explosions) {
+      const frameIndex = Math.min(
+        Math.floor((exp.elapsed / EXPLOSION_DURATION) * 4),
+        3,
+      );
+      const frame = EXPLOSION_FRAMES[exp.color]?.[frameIndex];
+      if (frame) drawFrame(frame, exp.x, exp.y, exp.w, exp.h);
+    }
+
+    drawSprite(SPRITES.paddle, paddle.x, paddle.y, paddle.w, paddle.h);
+    drawSprite(SPRITES.ball, ball.x, ball.y, ball.w, ball.h);
+  }
+
+  function loop(timestamp: number) {
+    if (lastTime === null) lastTime = timestamp;
+    const dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    update(dt);
+    draw();
+
+    if (gameState !== "playing") {
+      rafId = null;
+      return;
+    }
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key in keys) {
+      e.preventDefault();
+      keys[e.key] = true;
+    }
+  };
+
+  const handleKeyUp = (e: KeyboardEvent) => {
+    if (e.key in keys) {
+      e.preventDefault();
+      keys[e.key] = false;
+    }
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    paddle.x = Math.max(
+      0,
+      Math.min(canvas.width - paddle.w, mouseX - paddle.w / 2),
+    );
+  };
+
+  function initGame() {
+    gameState = "playing";
+    score = 0;
+    lives = 3;
+    initPaddle();
+    loadLevel(1);
+  }
+
+  function beginLoop() {
+    if (rafId !== null) return;
+    lastTime = null;
+    rafId = requestAnimationFrame(loop);
+  }
+
+  initGame();
+  loadSpritesheet(() => {
+    draw();
+  });
+
+  return {
+    start() {
+      window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("keyup", handleKeyUp);
+      canvas.addEventListener("mousemove", handleMouseMove);
+
+      if (ssLoaded) {
+        beginLoop();
+      } else if (!startPending) {
+        startPending = true;
+        loadSpritesheet(() => {
+          startPending = false;
+          beginLoop();
+        });
+      }
+    },
+    stop() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    },
+    restart() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      lastTime = null;
+      initGame();
+      draw();
+      notifyState();
+    },
+    forceGameOver() {
+      gameState = "gameover";
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      notifyState();
+    },
+    destroy() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      canvas.removeEventListener("mousemove", handleMouseMove);
+    },
+  };
+}
