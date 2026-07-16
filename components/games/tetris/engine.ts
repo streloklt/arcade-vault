@@ -338,7 +338,16 @@ export function createTetrisGame(
     spawn();
   }
 
+  const GAME_KEYS = new Set([
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    "Space",
+  ]);
+
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (GAME_KEYS.has(e.code)) e.preventDefault();
     if (gameOver) return;
     switch (e.code) {
       case "ArrowLeft":
@@ -355,7 +364,6 @@ export function createTetrisGame(
         tryRotate();
         break;
       case "Space":
-        e.preventDefault();
         hardDrop();
         return;
       default:
