@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { Game } from "@/lib/data";
+import type { Game } from "@/lib/games";
 
 export function MiniCard({ game }: { game: Game }) {
   const router = useRouter();
