@@ -13,6 +13,7 @@ import {
 import type { AsteroidsState } from "@/components/games/asteroids/engine";
 import { ArkanoidCanvas } from "@/components/games/arkanoid/ArkanoidCanvas";
 import { TetrisCanvas } from "@/components/games/tetris/TetrisCanvas";
+import { SnakeCanvas } from "@/components/games/snake/SnakeCanvas";
 
 export interface GameCanvasHandle {
   pause(): void;
@@ -78,6 +79,10 @@ export const GAME_ENGINES: Record<string, GameEngine> = {
   },
   arkanoid: {
     Canvas: ArkanoidCanvas,
+    initialState: { score: 0, lives: 3, level: 1, status: "playing" },
+  },
+  snake: {
+    Canvas: SnakeCanvas,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
   },
 };
