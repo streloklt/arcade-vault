@@ -92,21 +92,31 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: "24px",
           }}
         >
-          <canvas
-            ref={boardRef}
-            width={300}
-            height={600}
-            style={{ display: "block" }}
-          />
-          <canvas
-            ref={nextRef}
-            width={120}
-            height={120}
-            style={{ display: "block" }}
-          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: "5.4%",
+              aspectRatio: "444 / 600",
+              maxWidth: "100%",
+              maxHeight: "100%",
+            }}
+          >
+            <canvas
+              ref={boardRef}
+              width={300}
+              height={600}
+              style={{ width: "67.6%", height: "100%", display: "block" }}
+            />
+            <canvas
+              ref={nextRef}
+              width={120}
+              height={120}
+              style={{ width: "27%", height: "auto", display: "block" }}
+            />
+          </div>
         </div>
         {!started && (
           <div

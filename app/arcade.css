@@ -2814,3 +2814,73 @@ a {
   color: var(--ink-dim);
   line-height: 1.6;
 }
+
+/* ===== touch controls ===== */
+.touch-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.touch-controls-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.touch-controls-dpad {
+  justify-content: flex-start;
+}
+.touch-controls-actions {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+.touch-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 14px;
+  user-select: none;
+}
+
+/* ===== responsive: mobile ===== */
+@media (max-width: 768px) {
+  .av-player {
+    padding: 0 12px 40px;
+  }
+  .crt {
+    padding: 12px;
+    border-radius: 18px;
+  }
+  .crt-screen {
+    max-width: 100%;
+  }
+
+  .player-hud {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 12px 14px;
+  }
+  .hud-stats {
+    gap: 14px 20px;
+  }
+  .hud-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .hud-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .touch-controls {
+    flex-wrap: wrap;
+    padding: 12px;
+    gap: 12px;
+  }
+  .touch-controls-actions {
+    margin-left: 0;
+  }
+}
