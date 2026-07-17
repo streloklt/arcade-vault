@@ -49,10 +49,11 @@ export interface GameEngine {
 }
 
 const AsteroidsAdapter = forwardRef<GameCanvasHandle, GameCanvasProps>(
-  function AsteroidsAdapter({ onStateChange }, ref) {
+  function AsteroidsAdapter({ onStateChange, skin }, ref) {
     return (
       <AsteroidsCanvas
         ref={ref as Ref<AsteroidsCanvasHandle>}
+        skin={skin}
         onStateChange={(state: AsteroidsState) =>
           onStateChange({
             score: state.score,
@@ -79,6 +80,7 @@ export const GAME_ENGINES: Record<string, GameEngine> = {
   asteroids: {
     Canvas: AsteroidsAdapter,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
+    hasSkins: true,
   },
   tetris: {
     Canvas: TetrisCanvas,

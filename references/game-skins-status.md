@@ -45,9 +45,20 @@ Estados:
 ### Asteroids
 
 - Fecha: 2026-07-17
-- Estado: sin-skins
-- Skins: —
-- Descripción: sin paleta configurable; render en `components/games/asteroids/engine.ts`.
+- Estado: con-skins
+- Skins: clasico (default), neon, retro
+- Descripción:
+  - `clasico`: vectorial B/N original preservado exacto (nave/roca/bala/estela blancas
+    `#fff`, llama `rgba(255,130,0,0.85)`, power-up cyan `#0ff`), fondo negro `#000`, sin glow.
+  - `neon`: vectores saturados de alto contraste (nave cyan `#00f5ff`, rocas magenta
+    `#c800ff`, balas amarillas `#faff00`, power-up verde `#00ff85`) con glow tipo tubo de
+    neón vía `shadowBlur`, sobre fondo casi negro azulado `#03030a`.
+  - `retro`: paleta ámbar/terrosa fósforo CRT (nave `#d8c9a0`, rocas oliva `#8a8a7a`,
+    balas mostaza `#c9a227`, power-up teal `#5a8f8f`) sobre fondo marrón muy oscuro `#0d0b07`,
+    sin glow.
+  - Paleta por skin en `Record<SkinId, AsteroidsPalette>` (`components/games/asteroids/engine.ts`),
+    inyectada vía prop `skin` → `setSkin(id)` (cada clase de entidad recibe la paleta en su
+    `draw`); persistida global en `av_skin`.
 
 ### Arkanoid
 
