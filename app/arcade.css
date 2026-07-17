@@ -2831,27 +2831,98 @@ body.av-hide-nav .av-nav {
   justify-content: space-between;
   gap: 16px;
   margin-top: 28px;
-  padding: 14px 18px;
+  padding: 18px 28px;
   border: 1px solid var(--line);
   background: var(--bg-2);
 }
 .touch-controls-group {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.touch-controls-dpad {
-  justify-content: flex-start;
-}
-.touch-controls-actions {
-  justify-content: flex-end;
-  margin-left: auto;
 }
 .touch-btn {
   min-width: 44px;
   min-height: 44px;
   padding: 10px 14px;
   user-select: none;
+}
+.touch-btn-disabled,
+.touch-btn:disabled {
+  opacity: 0.3;
+  filter: grayscale(1);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* dpad como roseta de joystick: cruz de botones sobre un plato circular */
+.touch-controls .touch-controls-dpad {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 52px);
+  gap: 4px;
+  padding: 10px;
+  border-radius: 50%;
+}
+.touch-controls-dpad::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.07), transparent 72%);
+  border: 1px solid var(--line);
+}
+.touch-controls-dpad .touch-btn {
+  position: relative;
+  border-radius: 10px;
+  clip-path: none;
+}
+.touch-controls-dpad .touch-btn::before {
+  border-radius: 8px;
+  clip-path: none;
+}
+.touch-controls-dpad .dpad-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+.touch-controls-dpad .dpad-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+.touch-controls-dpad .dpad-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+.touch-controls-dpad .dpad-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+/* A/B: círculos estilo consola, B más abajo que A */
+.touch-controls-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 56px);
+  grid-template-rows: repeat(2, 56px);
+  gap: 10px;
+  align-items: center;
+}
+.touch-controls-actions .touch-btn {
+  min-width: 0;
+  min-height: 0;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  clip-path: none;
+}
+.touch-controls-actions .touch-btn::before {
+  border-radius: 50%;
+}
+.touch-controls-actions .touch-btn:first-child {
+  grid-column: 2;
+  grid-row: 1;
+}
+.touch-controls-actions .touch-btn:last-child {
+  grid-column: 1;
+  grid-row: 2;
 }
 
 /* ===== responsive: mobile ===== */
@@ -2891,11 +2962,9 @@ body.av-hide-nav .av-nav {
 
   .touch-controls {
     flex-wrap: wrap;
+    justify-content: space-around;
     margin-top: 20px;
     padding: 12px;
     gap: 12px;
-  }
-  .touch-controls-actions {
-    margin-left: 0;
   }
 }
