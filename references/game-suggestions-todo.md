@@ -11,7 +11,7 @@ descartado sin motivo nuevo.
 - Categoría/Color propuestos: <cat> / <color>
 - Fecha: <YYYY-MM-DD>
 - Estado: propuesto | descartado | implementado
-- Rationale: <por qué encaja / por qué se descartó>
+- Descripción: <qué es el juego y cómo se juega — género, mecánica central, controles>
 ```
 
 Estados:
@@ -20,8 +20,8 @@ Estados:
   tabla `games` de Supabase.
 - `propuesto` — recomendado por `game-planner` en alguna corrida, todavía sin spec ni
   implementación.
-- `descartado` — evaluado y rechazado; el rationale explica por qué (no encaja en el
-  patrón técnico, duplica mecánica, etc.).
+- `descartado` — evaluado y rechazado; el motivo del descarte se comunica al usuario en
+  el cierre de esa corrida, no queda escrito acá.
 
 ---
 
@@ -32,28 +32,28 @@ Estados:
 - Categoría/Color propuestos: Puzzle / magenta
 - Fecha: 2026-07-17
 - Estado: implementado
-- Rationale: Ya en producción (spec 07). Bloques que caen, single-player, canvas, teclado, score por líneas.
+- Descripción: Bloques que caen sobre un tablero vertical; el jugador los rota y desplaza con el teclado para completar líneas horizontales antes de que el tablero se llene. Incluye ghost piece para previsualizar la caída.
 
 ### Asteroids
 
 - Categoría/Color propuestos: Shooter / yellow
 - Fecha: 2026-07-17
 - Estado: implementado
-- Rationale: Ya en producción (spec 05). Primer juego del vault; estableció el patrón de motor factory + registro.
+- Descripción: Nave triangular en vacío absoluto, controlada por rotación e impulso inercial. Dispara para fragmentar rocas en pedazos cada vez más pequeños; enemigos OVNI aparecen como amenaza adicional.
 
 ### Arkanoid
 
 - Categoría/Color propuestos: Arcade / cyan
 - Fecha: 2026-07-17
 - Estado: implementado
-- Rationale: Ya en producción (spec 08). Paleta y pelota, 5 niveles, single-player, canvas, teclado.
+- Descripción: Paleta horizontal que rebota una pelota para destruir bloques distribuidos en 5 niveles. Se pierde una vida si la pelota cae al fondo; game-over a las 3 vidas perdidas o al completar el nivel 5.
 
 ### Snake
 
 - Categoría/Color propuestos: Arcade / green
 - Fecha: 2026-07-17
 - Estado: implementado
-- Rationale: Ya en producción (spec 09). Clásico de grid, single-player, canvas, teclado.
+- Descripción: Serpiente que se mueve en grid, guiada con teclado, comiendo frutas que la hacen crecer. Termina al chocar contra los bordes o contra su propia cola.
 
 ## Corridas del planner
 
@@ -62,21 +62,21 @@ Estados:
 - Categoría/Color propuestos: VERSUS / yellow (reusa color; ya usado por Asteroids)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Estrena la categoría `VERSUS`, hoy vacía, sin romper el criterio single-player: se juega contra una IA local (jugador vs CPU), sin netcode ni realtime. Motor factory de complejidad comparable a Arkanoid (paleta + pelota + rebotes), canvas 2D, controles de teclado (arriba/abajo). Score creciente por punto anotado contra la CPU, con game-over al llegar la CPU a N puntos → alimenta `/api/scores`. Solapamiento reconocido: la mecánica de paleta/pelota se parece a Arkanoid, pero el eje competitivo vs oponente activo es nuevo en el vault y el valor de llenar la única categoría libre lo justifica.
+- Descripción: Pong clásico, jugador vs IA local. Cada jugador mueve una paleta vertical con teclado (arriba/abajo) para devolver una pelota que rebota en los bordes superior e inferior. Se anota punto cuando el rival no llega a la pelota; game-over al llegar la CPU a N puntos.
 
 ### Space Invaders
 
 - Categoría/Color propuestos: SHOOTER / green
 - Fecha: 2026-07-17
 - Estado: descartado
-- Rationale: Encaja técnicamente (single-player, canvas, teclado, score) y su mecánica de grid descendente + escudos es distinta a la fragmentación de Asteroids. Se descarta en esta corrida porque reusa la categoría SHOOTER (ya ocupada por Asteroids) y no llena ningún hueco de catálogo; Pong aporta más al abrir VERSUS. Reconsiderar en una corrida futura si el objetivo pasa a ser profundidad de catálogo por categoría.
+- Descripción: Formación de enemigos que desciende en grid mientras se desplaza lateralmente, con escudos destructibles como cobertura. El jugador controla una nave fija en la base que dispara hacia arriba; game-over si un enemigo llega al fondo o impacta al jugador.
 
 ### Frogger
 
 - Categoría/Color propuestos: ARCADE / cyan
 - Fecha: 2026-07-17
 - Estado: descartado
-- Rationale: Implementable con el patrón (movimiento en grid por carriles, single-player, teclado, score por avance). Se descarta porque cae en ARCADE, categoría ya con dos juegos (Arkanoid, Snake), y no aporta categoría ni eje de mecánica que Pong no cubra mejor esta corrida. Candidato válido para reflotar más adelante.
+- Descripción: Movimiento en grid por carriles: la rana avanza esquivando tráfico y cruzando troncos/plataformas en un río, sin caer al agua ni ser atropellada. Score por avance hacia la meta.
 
 ## Corrida masiva (4 lotes paralelos, 20 recomendaciones → 15 únicas tras dedupe)
 
@@ -89,137 +89,137 @@ Neon Runner) — señal de convergencia, no error. Deduplicadas a 15 propuestas 
 - Categoría/Color propuestos: PUZZLE / cyan (reusa; Arkanoid)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Merge de fichas en grid 4x4, mecánica ausente (distinta de la caída de bloques de Tetris). Motor trivial, teclado direccional, score = suma de fusiones, game-over al llenarse el tablero sin movimientos. Sugerido de forma independiente por 2 lotes.
+- Descripción: Juego de merge en grid 4x4: se deslizan todas las fichas con el teclado direccional y las de igual valor se fusionan sumando su número. Score = suma de fusiones; game-over al llenarse el tablero sin movimientos posibles.
 
 ### Centipede
 
 - Categoría/Color propuestos: SHOOTER / magenta (reusa; Tetris)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Segundo shooter con eje distinto a Asteroids: enemigo segmentado que serpentea sobre campo destructible en vez de fragmentación inercial. Move+disparo, score creciente, game-over al contacto. Sugerido de forma independiente por 2 lotes.
+- Descripción: Shooter de nave fija en la base que dispara hacia arriba contra un ciempiés segmentado que serpentea descendiendo por un campo de hongos destructible. Score creciente por segmento eliminado; game-over al contacto con el enemigo.
 
 ### Light Cycles (Tron)
 
 - Categoría/Color propuestos: VERSUS / green (reusa; Snake)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Refuerza VERSUS (hoy solo Pong) con mecánica de estela/grid: encerrar a la CPU sin chocar contra el propio rastro. Single-player vs IA local, teclado, score por rondas/segundos sobrevividos. Sugerido de forma independiente por 2 lotes.
+- Descripción: Duelo de motos de luz vs IA local sobre un grid: cada moto deja una estela permanente y pierde quien choca contra cualquier estela (propia o rival) o contra el borde. Score por rondas o segundos sobrevividos.
 
 ### Lunar Lander
 
 - Categoría/Color propuestos: ARCADE / yellow (reusa; Asteroids)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Introduce física de thrust/gravedad, eje mecánico ausente en el catálogo. Canvas simple, teclado (rotar/empuje), score por aterrizajes + combustible restante, game-over al estrellarse. Sugerido de forma independiente por 2 lotes.
+- Descripción: Simulación de aterrizaje con física de gravedad y empuje: el jugador rota y acciona el propulsor con teclado para posar la nave suavemente en una plataforma con combustible limitado. Score por aterrizajes logrados y combustible restante; game-over al estrellarse.
 
 ### Neon Runner
 
 - Categoría/Color propuestos: ARCADE / yellow (reusa; Asteroids)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Endless runner de un botón, género sin representación en el vault. Motor minimalista, 1-2 teclas, score = distancia, game-over inmediato al chocar. Sugerido de forma independiente por 2 lotes.
+- Descripción: Endless runner de scroll lateral automático con 1-2 teclas (saltar/agachar) para esquivar obstáculos. Score = distancia recorrida; game-over inmediato al chocar.
 
 ### Doodle Jump
 
 - Categoría/Color propuestos: ARCADE / magenta (reusa; Tetris)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Vertical endless-jumper con scroll ascendente, mecánica inédita. Plataformas procedurales + gravedad, teclado izq/der, score = altura, game-over al caer fuera de pantalla.
+- Descripción: Jumper vertical con scroll ascendente: el personaje rebota automáticamente sobre plataformas generadas de forma procedural, moviéndose izquierda/derecha con teclado. Score = altura alcanzada; game-over al caer fuera de pantalla.
 
 ### Tank Duel (vs CPU)
 
 - Categoría/Color propuestos: VERSUS / magenta (reusa; Tetris)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Alternativa a Pong/Light Cycles para VERSUS: combate top-down con cobertura y proyectiles en vez de paleta/pelota o estelas. Teclado (mover/rotar/disparar), score por impactos, single-player vs IA local.
+- Descripción: Combate top-down de tanques contra IA local, con obstáculos de cobertura en el mapa. Controles de teclado para mover, rotar torreta y disparar proyectiles; score por impactos acertados.
 
 ### Neon Memory
 
 - Categoría/Color propuestos: PUZZLE / cyan (reusa; Arkanoid)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Simon de secuencias luminosas: mecánica de memoria/patrón, inédita frente a bloques, disparo, paleta o grid. Máquina de estados + timers, teclado, score = longitud máxima de secuencia.
+- Descripción: Juego de memoria tipo Simon: se reproduce una secuencia de paneles luminosos y el jugador debe repetirla con teclado; cada ronda agrega un paso. Score = longitud máxima de secuencia alcanzada.
 
 ### Stack Attack
 
 - Categoría/Color propuestos: PUZZLE / yellow (reusa; Asteroids)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Apilar-y-frenar por timing puro (distinto de Tetris pese a compartir "bloques": aquí el reto es precisión de reacción, no rotación/relleno de líneas). Motor mínimo, score = altura de torre.
+- Descripción: Apilado por timing puro: un bloque se desplaza de lado a lado y el jugador lo suelta con una tecla para apilarlo alineado sobre el anterior; el desborde recorta el bloque. Score = altura de la torre.
 
 ### Meteor Dash
 
 - Categoría/Color propuestos: ARCADE / magenta (reusa; Tetris)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Dodger de reacción sin disparo (a diferencia de Asteroids) ni rebote (a diferencia de Arkanoid). Canvas + teclado izq/der, score por tiempo sobrevivido.
+- Descripción: Dodger de reacción sin disparo ni rebote: meteoritos caen desde arriba y el jugador se desplaza izquierda/derecha con teclado para esquivarlos. Score por tiempo sobrevivido.
 
 ### Tower Siege
 
 - Categoría/Color propuestos: SHOOTER / green (reusa; Snake)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Tower-defense simplificado a un cañón fijo: defensa estática por oleadas, eje distinto a la fragmentación con inercia de Asteroids. Score por bajas/oleada, complejidad comparable a Arkanoid.
+- Descripción: Tower-defense simplificado a un cañón fijo que apunta y dispara con teclado contra oleadas de enemigos que avanzan hacia él. Score por bajas por oleada; game-over si una oleada llega al cañón.
 
 ### Reflex Duel
 
 - Categoría/Color propuestos: VERSUS / cyan (reusa; Arkanoid)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Air hockey vs CPU: física de disco con rebote en 2 ejes, distinta del rebote 1D de Pong. Otra alternativa para poblar VERSUS con más profundidad.
+- Descripción: Air hockey vs IA local: un disco rebota en los cuatro bordes de la mesa y cada jugador mueve su paleta con teclado para devolverlo hacia el arco rival. Score por goles anotados.
 
 ### Gem Cascade
 
 - Categoría/Color propuestos: PUZZLE / cyan (reusa; Arkanoid)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Match-3 con swap de gemas y cascadas en cadena — mecánica de intercambio ausente en el vault (no es caída de bloques ni grid de recorrido). Cursor por teclado, score por combos contrarreloj.
+- Descripción: Match-3 con cursor de teclado: se intercambian gemas adyacentes en un grid para formar líneas de 3+ del mismo color, que se eliminan y provocan cascadas encadenadas. Score por combos, contrarreloj.
 
 ### Minesweeper Blitz
 
 - Categoría/Color propuestos: PUZZLE / green (reusa; Snake)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Buscaminas contrarreloj navegado por teclado (no mouse), eje de deducción lógica pura, inédito en el catálogo. Score por tableros resueltos y velocidad.
+- Descripción: Buscaminas navegado enteramente con teclado (cursor + revelar/marcar) contra reloj. Score por tableros resueltos y velocidad de resolución.
 
 ### Tower Ascent
 
 - Categoría/Color propuestos: ARCADE / magenta (reusa; Tetris)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Climber vertical estilo Icy Tower, plataformeo con scroll ascendente y combos de salto. Física de salto simple, score por altura/combos.
+- Descripción: Climber vertical estilo Icy Tower: el personaje salta entre plataformas con scroll ascendente, acumulando combos por saltos consecutivos sin tocar el suelo. Score por altura y combos.
 
 ### Maze Muncher
 
 - Categoría/Color propuestos: ARCADE / cyan (reusa; Arkanoid)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Laberinto tipo Pac-Man con enemigos que persiguen (pathfinding simple) y power-pellet que invierte caza/huida — ausente en el ledger. Complejidad comparable a Snake/Arkanoid.
+- Descripción: Laberinto tipo Pac-Man: el jugador recorre un grid comiendo pellets mientras esquiva enemigos con pathfinding simple que lo persiguen; un power-pellet invierte temporalmente caza y huida. Score por pellets comidos.
 
 ### Crate Runner
 
 - Categoría/Color propuestos: PUZZLE / green (reusa; Snake)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Sokoban — empujar cajas en grid hasta sus marcas, lógica espacial distinta de toda la mecánica PUZZLE ya propuesta (merge, memoria, timing, match-3, deducción, caída). Motor trivial, score por niveles/eficiencia de movimientos.
+- Descripción: Sokoban: el jugador empuja cajas en un grid con teclado hasta ubicarlas sobre marcas objetivo, sin poder tirar de ellas. Score por niveles completados y eficiencia de movimientos.
 
 ### Skyguard
 
 - Categoría/Color propuestos: SHOOTER / magenta (reusa; Tetris)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Missile Command — intercepción por apuntado y timing de detonación, distinto de fragmentación (Asteroids), enemigo segmentado (Centipede) y cañón por oleadas (Tower Siege). Refuerza SHOOTER, la categoría más flaca entre lo propuesto.
+- Descripción: Missile Command: el jugador apunta y detona intercepciones con timing para destruir misiles descendentes antes de que impacten ciudades defendidas en la base de la pantalla. Score por misiles interceptados.
 
 ### Neon Fighter
 
 - Categoría/Color propuestos: VERSUS / yellow (reusa; Asteroids)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Combate melee 1v1 con combos/bloqueo/esquive vs CPU — eje nuevo dentro de VERSUS (hoy solo rebote, estela y proyectiles top-down). Score por daño y rounds ganados.
+- Descripción: Combate melee 1v1 vs IA local con combos, bloqueo y esquive controlados por teclado. Score por daño infligido y rounds ganados.
 
 ### Flood Claim
 
 - Categoría/Color propuestos: ARCADE / magenta (reusa; Tetris)
 - Fecha: 2026-07-17
 - Estado: propuesto
-- Rationale: Captura de área estilo Qix — trazar recorridos para encerrar zonas esquivando un enemigo errante, mecánica de reclamo territorial inédita. Score por porcentaje reclamado.
+- Descripción: Captura de área estilo Qix: el jugador traza líneas desde el borde de una zona reclamada para encerrar territorio nuevo, esquivando un enemigo errante que lo elimina al tocar la línea en trazo. Score por porcentaje de área reclamada.

@@ -71,20 +71,23 @@ memoria de Fase 1, y elegí **uno**. Para el elegido, dejá listos los campos qu
 - `color` (uno de los 4 colores fijos; señalá si reusa uno ya ocupado).
 - `short`/`long` tentativos (una o dos frases cada uno).
 
-Sumá un rationale corto: por qué este juego encaja ahora, y por qué los descartados no
-ganaron (mecánica repetida, complejidad excesiva, ya descartado antes sin cambio de
-contexto, etc.).
+Sumá una descripción corta del juego elegido: qué es, género y mecánica central, cómo se
+juega (controles, condición de score/game-over) — no una justificación de por qué se
+eligió. Para los descartados, la misma lógica: describí el juego, no el motivo del
+descarte (el motivo va aparte, en el mensaje de cierre al usuario, no en el ledger).
 
 ## Fase 4 — Registrar en memoria
 
 Actualizá `references/game-suggestions-todo.md`:
 
 - Agregá una entrada nueva (formato ya definido en el header del archivo) para el
-  candidato elegido, con `Estado: propuesto`.
+  candidato elegido, con `Estado: propuesto` y su `Descripción` (qué es el juego y cómo
+  se juega).
 - Agregá una entrada por cada candidato descartado en esta corrida, con
-  `Estado: descartado` y el motivo puntual.
+  `Estado: descartado` y su `Descripción` (el motivo del descarte no va en el ledger; se
+  lo explicás al usuario en el cierre).
 - **Nunca dupliques una entrada existente.** Si un juego ya tenía entrada (de una corrida
-  anterior), actualizá su estado y rationale en el lugar en vez de agregar una fila
+  anterior), actualizá su estado y descripción en el lugar en vez de agregar una fila
   nueva.
 
 ## Fase 5 — Cierre
