@@ -1,7 +1,10 @@
 import type { User } from "@/lib/types";
+import { DEFAULT_SKIN, isSkinId, type SkinId } from "@/components/games/skins";
 
 const USER_KEY = "av_user";
 const USER_CHANGE_EVENT = "av-user-change";
+const SKIN_KEY = "av_skin";
+const SKIN_CHANGE_EVENT = "av-skin-change";
 
 export function getStoredUser(): User | null {
   try {
@@ -50,6 +53,32 @@ export function subscribeToUserChanges(callback: () => void): () => void {
   window.addEventListener("storage", callback);
   return () => {
     window.removeEventListener(USER_CHANGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+// Skin activo. Alcance global: un mismo skin aplica a todos los juegos del vault.
+export function getStoredSkin(): SkinId {
+  try {
+    const raw = localStorage.getItem(SKIN_KEY);
+    return isSkinId(raw) ? raw : DEFAULT_SKIN;
+  } catch {
+    return DEFAULT_SKIN;
+  }
+}
+
+export function setStoredSkin(skin: SkinId): void {
+  try {
+    localStorage.setItem(SKIN_KEY, skin);
+  } catch {}
+  window.dispatchEvent(new Event(SKIN_CHANGE_EVENT));
+}
+
+export function subscribeToSkinChanges(callback: () => void): () => void {
+  window.addEventListener(SKIN_CHANGE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(SKIN_CHANGE_EVENT, callback);
     window.removeEventListener("storage", callback);
   };
 }

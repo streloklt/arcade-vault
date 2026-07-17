@@ -1,20 +1,69 @@
 import type { GameState } from "@/components/games/registry";
+import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
 
 const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
-const COLORS = [
-  null,
-  "#4dd0e1", // I - cyan
-  "#ffd54f", // O - yellow
-  "#ba68c8", // T - purple
-  "#81c784", // S - green
-  "#e57373", // Z - red
-  "#90caf9", // J - pale blue
-  "#ffb74d", // L - orange
-  "#9e9e9e", // N - tuerca (gris metálico)
-] as const;
+// Paleta de Tetris por skin. `pieces` está indexado 0..7 y se accede con
+// `colorIndex - 1` (los índices de pieza en el grid van de 1 a 8: I,O,T,S,Z,J,L,N).
+interface TetrisPalette {
+  pieces: [string, string, string, string, string, string, string, string];
+  grid: string; // líneas de la grilla
+  highlight: string; // franja superior brillante del bloque
+  glow: number; // shadowBlur; 0 = sin glow
+}
+
+const PALETTES: Record<SkinId, TetrisPalette> = {
+  // clasico preserva EXACTAMENTE los colores originales del motor.
+  clasico: {
+    pieces: [
+      "#4dd0e1", // I - cyan
+      "#ffd54f", // O - yellow
+      "#ba68c8", // T - purple
+      "#81c784", // S - green
+      "#e57373", // Z - red
+      "#90caf9", // J - pale blue
+      "#ffb74d", // L - orange
+      "#9e9e9e", // N - tuerca (gris metálico)
+    ],
+    grid: "#22222e",
+    highlight: "rgba(255,255,255,0.12)",
+    glow: 0,
+  },
+  // neon: saturado, alto contraste y glow tipo tubo de neón sobre el CRT negro.
+  neon: {
+    pieces: [
+      "#00f5ff", // I
+      "#faff00", // O
+      "#c800ff", // T
+      "#00ff85", // S
+      "#ff1f5a", // Z
+      "#2b6bff", // J
+      "#ff8a00", // L
+      "#00ffd0", // N
+    ],
+    grid: "rgba(0,245,255,0.16)",
+    highlight: "rgba(255,255,255,0.28)",
+    glow: 12,
+  },
+  // retro: paleta apagada/terrosa, estética CRT 8-bit, sin glow.
+  retro: {
+    pieces: [
+      "#5a8f8f", // I
+      "#c9a227", // O
+      "#8a6d9e", // T
+      "#6b8f5a", // S
+      "#b5563f", // Z
+      "#4f6d99", // J
+      "#c07b3f", // L
+      "#8a8a7a", // N
+    ],
+    grid: "#2a2620",
+    highlight: "rgba(255,240,200,0.08)",
+    glow: 0,
+  },
+};
 
 const PIECES: (number[][] | null)[] = [
   null,
@@ -74,6 +123,7 @@ export interface TetrisGame {
   stop(): void; // cancela el loop (usado por PAUSA y por unmount)
   restart(): void; // reproduce init(): board vacío, score=0, lines=0, level=1
   forceGameOver(): void; // fuerza status="gameover" (usado por el botón FIN)
+  setSkin(id: SkinId): void; // cambia la paleta activa en caliente y redibuja
   destroy(): void; // limpia listeners de teclado y cancela el loop (unmount)
 }
 
@@ -81,9 +131,12 @@ export function createTetrisGame(
   board: HTMLCanvasElement,
   nextPreview: HTMLCanvasElement,
   onStateChange: (state: GameState) => void,
+  initialSkin: SkinId = DEFAULT_SKIN,
 ): TetrisGame {
   const ctx = board.getContext("2d")!;
   const nextCtx = nextPreview.getContext("2d")!;
+
+  let palette: TetrisPalette = PALETTES[initialSkin];
 
   let grid: number[][];
   let current: Piece;
@@ -230,17 +283,24 @@ export function createTetrisGame(
     alpha?: number,
   ) {
     if (!colorIndex) return;
-    const color = COLORS[colorIndex];
+    const color = palette.pieces[colorIndex - 1];
+    const isGhost = alpha !== undefined && alpha < 1;
     context.globalAlpha = alpha ?? 1;
-    context.fillStyle = color!;
+    // Glow tipo neón solo en bloques opacos (no en la ghost piece).
+    if (palette.glow > 0 && !isGhost) {
+      context.shadowColor = color;
+      context.shadowBlur = palette.glow;
+    }
+    context.fillStyle = color;
     context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-    context.fillStyle = "rgba(255,255,255,0.12)";
+    context.shadowBlur = 0;
+    context.fillStyle = palette.highlight;
     context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
     context.globalAlpha = 1;
   }
 
   function drawGrid() {
-    ctx.strokeStyle = "#22222e";
+    ctx.strokeStyle = palette.grid;
     ctx.lineWidth = 0.5;
     for (let c = 1; c < COLS; c++) {
       ctx.beginPath();
@@ -404,6 +464,11 @@ export function createTetrisGame(
         rafId = null;
       }
       notifyState();
+    },
+    setSkin(id: SkinId) {
+      palette = PALETTES[id];
+      draw();
+      drawNext();
     },
     destroy() {
       if (rafId !== null) {

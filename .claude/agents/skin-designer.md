@@ -77,16 +77,24 @@ Si no existe todavía, creá la infraestructura común antes de tocar ningún `e
 - **Tipo y catálogo de skins**: módulo nuevo `components/games/skins.ts` con
   `type SkinId = "clasico" | "neon" | "retro"`, un array `SKINS` con `{ id, label }`
   para poblar el selector de UI, y `DEFAULT_SKIN: SkinId = "clasico"`.
-- **Extensión del contrato**: agregá `skin?: SkinId` a `GameCanvasProps` en
-  `registry.tsx` (opcional, para no romper juegos aún no migrados durante una corrida
-  parcial).
+- **Extensión del contrato**: agregá `skin?: SkinId` a `GameCanvasProps` **y**
+  `hasSkins?: boolean` a `GameEngine` en `registry.tsx` (ambos opcionales, para no
+  romper juegos aún no migrados durante una corrida parcial). `hasSkins` es la única
+  fuente de verdad de si un juego ya tiene paletas implementadas — marcalo `true` solo
+  en la entrada de `GAME_ENGINES` del juego que acabás de migrar en esta corrida.
 - **Persistencia**: en `lib/storage.ts`, siguiendo el mismo patrón de `getStoredUser`/
   `setStoredUser`/`subscribeToUserChanges`, agregá `getStoredSkin`/`setStoredSkin` con
   clave `av_skin` (alcance global para los 4 juegos, salvo que el usuario pida
   persistencia por juego).
-- **Selector en el HUD**: en `GamePlayer.tsx`, junto a los botones existentes
-  (PAUSA/FIN/SALIR), un selector (botones o `<select>`) que recorra `SKINS`, cambie el
-  skin activo y lo pase a `engine.Canvas` vía prop.
+- **Selector en el HUD**: en `GamePlayer.tsx`, el selector de skin se renderiza
+  **condicionado a `engine?.hasSkins`** — nunca incondicional, porque `GAME_ENGINES`
+  cubre juegos que todavía no tienen paletas y mostrarles el selector no hace nada útil
+  (rompe la promesa de "un juego por corrida"). Además va en **su propia fila, debajo
+  de `.player-hud`** (clase `.hud-skins-row` en `arcade.css`, `display:flex; gap:8px;
+flex-wrap:wrap`), nunca metido dentro de `.hud-actions` — ese contenedor ya tiene
+  PAUSA/FIN/SALIR con `justify-content: space-between` heredado del padre y agregarle
+  botones ahí descuadra el HUD superior. El selector recorre `SKINS`, cambia el skin
+  activo y lo pasa a `engine.Canvas` vía prop.
 
 Documentá estas decisiones (dónde vive la paleta, si la persistencia es global o por
 juego, cómo se inyecta el skin al motor) en el mensaje de cierre — no hace falta un
@@ -107,7 +115,9 @@ Para el `engine.ts` del juego que te nombraron (y solo ese):
 4. Cableá el skin activo desde el wrapper `*Canvas.tsx` hasta el factory del motor (por
    parámetro de `createXGame` o un método `setSkin(id)` sobre la instancia — elegí lo
    mínimo invasivo dado cómo ese motor ya guarda su estado en closures).
-5. Dejá `npm run build` limpio y el juego jugable en `/juego/<id>/jugar` antes de pasar
+5. Marcá `hasSkins: true` en la entrada de `GAME_ENGINES` del juego migrado
+   (`registry.tsx`) — es lo que hace aparecer el selector solo para ese juego en el HUD.
+6. Dejá `npm run build` limpio y el juego jugable en `/juego/<id>/jugar` antes de pasar
    a la Fase 5. No toques el `engine.ts` de ningún otro juego del catálogo.
 
 ## Fase 5 — Validación dark mode
@@ -143,6 +153,9 @@ sigue `sin-skins` salvo que el usuario pida explícitamente la próxima corrida.
 - No rompés `GamePlayer.tsx` ni `registry.tsx` para los juegos que todavía no tienen
   skins — la prop `skin` es opcional y cada motor sin skins sigue funcionando igual que
   hoy.
+- El selector de skin **nunca es incondicional**: se renderiza solo cuando
+  `engine?.hasSkins` es `true`, y vive en su propia fila (`.hud-skins-row`) debajo de
+  `.player-hud` — nunca dentro de `.hud-actions` (eso descuadra PAUSA/FIN/SALIR).
 - Mantenés el patrón factory + closures + `useImperativeHandle` del motor — no
   introducís estado en variables de módulo ni cambiás la forma de `GameState`.
 - No agregás dependencias externas ni assets 3D para lograr el efecto neon/retro —

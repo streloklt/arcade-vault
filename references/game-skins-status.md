@@ -30,9 +30,17 @@ Estados:
 ### Tetris
 
 - Fecha: 2026-07-17
-- Estado: sin-skins
-- Skins: —
-- Descripción: colores de piezas hardcodeados en `COLORS[]` (`components/games/tetris/engine.ts`).
+- Estado: con-skins
+- Skins: clasico (default), neon, retro
+- Descripción:
+  - `clasico`: paleta original preservada exacta (I cyan, O amarillo, T púrpura, S verde,
+    Z rojo, J celeste, L naranja, N gris), grilla `#22222e`, sin glow.
+  - `neon`: piezas saturadas de alto contraste (`#00f5ff`, `#faff00`, `#c800ff`, etc.)
+    con glow tipo tubo de neón vía `shadowBlur`, grilla cyan translúcida.
+  - `retro`: paleta apagada/terrosa 8-bit (teal, mostaza, ladrillo, oliva) sobre grilla
+    marrón oscura, estética CRT sin glow.
+  - Paleta por skin en `Record<SkinId, TetrisPalette>` (`components/games/tetris/engine.ts`),
+    inyectada vía prop `skin` → `setSkin(id)`; persistida global en `av_skin`.
 
 ### Asteroids
 

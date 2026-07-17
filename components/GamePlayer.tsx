@@ -3,12 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Game } from "@/lib/games";
-import { getStoredUser } from "@/lib/storage";
+import {
+  getStoredSkin,
+  getStoredUser,
+  setStoredSkin,
+  subscribeToSkinChanges,
+} from "@/lib/storage";
 import {
   GAME_ENGINES,
   type GameCanvasHandle,
   type GameState,
 } from "@/components/games/registry";
+import { DEFAULT_SKIN, SKINS, type SkinId } from "@/components/games/skins";
 
 export function GamePlayer({ game }: { game: Game }) {
   const router = useRouter();
@@ -30,6 +36,7 @@ export function GamePlayer({ game }: { game: Game }) {
   const [over, setOver] = useState(false);
   const [name, setName] = useState("INVITADO");
   const [saved, setSaved] = useState(false);
+  const [skin, setSkin] = useState<SkinId>(DEFAULT_SKIN);
 
   useEffect(() => {
     // localStorage no existe en SSR; el nombre se lee tras montar y sigue siendo editable localmente.
@@ -37,6 +44,20 @@ export function GamePlayer({ game }: { game: Game }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- valor inicial hidratado desde localStorage, luego editable por el jugador
     if (user) setName(user.name);
   }, []);
+
+  useEffect(() => {
+    // Skin activo (alcance global) hidratado desde localStorage tras montar, y
+    // sincronizado si cambia en otra pestaña.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- valor inicial hidratado desde localStorage
+    setSkin(getStoredSkin());
+    const unsubscribe = subscribeToSkinChanges(() => setSkin(getStoredSkin()));
+    return unsubscribe;
+  }, []);
+
+  const changeSkin = (id: SkinId) => {
+    setSkin(id);
+    setStoredSkin(id);
+  };
 
   useEffect(() => {
     if (engine || over || paused) return;
@@ -130,10 +151,29 @@ export function GamePlayer({ game }: { game: Game }) {
         </div>
       </div>
 
+      {engine?.hasSkins && (
+        <div className="hud-skins-row" role="group" aria-label="Skin">
+          {SKINS.map((s) => (
+            <button
+              key={s.id}
+              className={`btn ghost${skin === s.id ? " magenta" : ""}`}
+              aria-pressed={skin === s.id}
+              onClick={() => changeSkin(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="crt">
         <div className="crt-screen">
           {engine ? (
-            <engine.Canvas ref={canvasRef} onStateChange={handleStateChange} />
+            <engine.Canvas
+              ref={canvasRef}
+              onStateChange={handleStateChange}
+              skin={skin}
+            />
           ) : (
             <div className="game-arena">
               <div className="grid-floor"></div>

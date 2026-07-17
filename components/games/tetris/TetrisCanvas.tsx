@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import type { GameState } from "@/components/games/registry";
+import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
 import { createTetrisGame, type TetrisGame } from "./engine";
 
 export interface TetrisCanvasHandle {
@@ -19,10 +20,11 @@ export interface TetrisCanvasHandle {
 
 interface TetrisCanvasProps {
   onStateChange: (state: GameState) => void;
+  skin?: SkinId;
 }
 
 export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
-  function TetrisCanvas({ onStateChange }, ref) {
+  function TetrisCanvas({ onStateChange, skin = DEFAULT_SKIN }, ref) {
     const boardRef = useRef<HTMLCanvasElement>(null);
     const nextRef = useRef<HTMLCanvasElement>(null);
     const gameRef = useRef<TetrisGame | null>(null);
@@ -37,7 +39,7 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
       const nextPreview = nextRef.current;
       if (!board || !nextPreview) return;
 
-      const game = createTetrisGame(board, nextPreview, onStateChange);
+      const game = createTetrisGame(board, nextPreview, onStateChange, skin);
       gameRef.current = game;
 
       return () => {
@@ -45,8 +47,12 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
         gameRef.current = null;
         initializedRef.current = false;
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- el engine se instancia una sola vez por montaje
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- el engine se instancia una sola vez por montaje; el skin inicial se aplica acá y los cambios posteriores vía setSkin
     }, []);
+
+    useEffect(() => {
+      gameRef.current?.setSkin(skin);
+    }, [skin]);
 
     useEffect(() => {
       if (started) return;
