@@ -6,7 +6,9 @@ Este archivo da guía a Claude Code (claude.ai/code) para tsrabajar en este repo
 
 ## Proyecto
 
-Arcade Vault — plataforma para jugar online y competir por puntos. Actualmente es un scaffold fresco de `create-next-app` (App Router, sin funcionalidades de juego/vault implementadas todavía).
+Arcade Vault — plataforma para jugar online y competir por puntos. Ya no es un scaffold: tiene 4 juegos jugables (Tetris, Asteroids, Arkanoid, Snake), catálogo y leaderboard sobre Supabase, auth, contacto por email (Resend) y home/biblioteca/salón de la fama conectados a datos reales.
+
+Ver @JUEGOS.md para el detalle de cada juego implementado (categoría, color, descripción), extraído de la tabla `games` de Supabase.
 
 ## Crítico: versión no estándar de Next.js
 
@@ -23,10 +25,13 @@ Todavía no hay test runner configurado.
 
 ## Arquitectura
 
-- Solo App Router, bajo `app/`: `layout.tsx` (layout raíz, fuentes Geist) + `page.tsx` (home).
-- Estilos: Tailwind CSS v4 vía `@tailwindcss/postcss` (ver `postcss.config.mjs`), tokens de tema declarados inline en `app/globals.css` con `@theme inline`, dark mode vía `prefers-color-scheme`.
+- App Router bajo `app/`: `page.tsx` (home), `biblioteca/`, `salon/` (salón de la fama), `juego/[id]/` y `juego/[id]/jugar/` (detalle y reproductor de cada juego), `auth/`, `acerca-de/`, `api/scores/` (registrar puntajes) y `api/contacto/` (envío de email vía Resend).
+- Juegos en `components/games/<slug>/`: cada uno expone un motor `engine.ts` (factory con estado en closures, `start/stop/restart/forceGameOver/destroy`) + un wrapper React `<Slug>Canvas.tsx` (`forwardRef` + `useImperativeHandle`). `components/games/registry.tsx` mapea `id → { Canvas, initialState }` (`GAME_ENGINES`); `GamePlayer.tsx` resuelve por ese registro y nunca se toca al sumar un juego nuevo. Juegos implementados: Tetris, Asteroids, Arkanoid, Snake.
+- Datos: `lib/games.ts`, `lib/scores.ts` y `lib/data.ts` leen catálogo/puntajes desde Supabase (`lib/supabase/{client,server,middleware}.ts`); tabla `games` + tabla de scores respaldan biblioteca, salón de la fama y home.
+- Estilos: Tailwind CSS v4 vía `@tailwindcss/postcss` (ver `postcss.config.mjs`), tokens de tema en `app/globals.css` con `@theme inline`, clases propias en `app/arcade.css`, dark mode vía `prefers-color-scheme`.
 - Alias de path `@/*` → raíz del repo (`tsconfig.json`).
 - TypeScript en modo strict.
+- `specs/` guarda las specs numeradas (01–09) que documentan cada feature ya implementada; `references/` guarda material de referencia (juegos de partida, templates, assets) que no es código de producción.
 
 ## Flujo de Spec Driven Design
 
@@ -39,4 +44,7 @@ npx skills@latest add Klerith/fernando-skills
 Usar `/spec` para producir una spec antes de implementar una feature, luego `/spec-impl` para implementar contra esa spec.
 
 ## Skills
-Usa siempre /frontend-desing para diseñar la interfaz de usuario. 
+
+- Usa siempre `/frontend-design` para diseñar la interfaz de usuario.
+- `/add-game` (`.claude/skills/add-game`): genera la spec de un juego nuevo (motor + leaderboard + catálogo) siguiendo el patrón de las specs 05/06, sin escribir código de producción. Úsalo antes de `/spec-impl` cuando se sume un juego jugable al vault.
+- `/graphify`: convierte el repo (o cualquier input) en un grafo de conocimiento persistente en `graphify-out/`; tratar cualquier pregunta sobre arquitectura/relaciones del código como consulta a ese grafo si ya existe.
