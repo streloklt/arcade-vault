@@ -15,6 +15,7 @@ import { ArkanoidCanvas } from "@/components/games/arkanoid/ArkanoidCanvas";
 import { TetrisCanvas } from "@/components/games/tetris/TetrisCanvas";
 import { SnakeCanvas } from "@/components/games/snake/SnakeCanvas";
 import type { SkinId } from "@/components/games/skins";
+import type { TouchButton } from "@/components/TouchControls";
 
 export interface GameCanvasHandle {
   pause(): void;
@@ -46,6 +47,10 @@ export interface GameEngine {
   // true solo para juegos cuyo engine.ts ya implementa paletas por SkinId.
   // Controla si GamePlayer muestra el selector de skin en el HUD.
   hasSkins?: boolean;
+  touchControls?: {
+    dpad: TouchButton[];
+    actions: TouchButton[];
+  };
 }
 
 const AsteroidsAdapter = forwardRef<GameCanvasHandle, GameCanvasProps>(
@@ -81,20 +86,55 @@ export const GAME_ENGINES: Record<string, GameEngine> = {
     Canvas: AsteroidsAdapter,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
     hasSkins: true,
+    touchControls: {
+      dpad: [
+        { code: "ArrowLeft", label: "◀" },
+        { code: "ArrowUp", label: "▲" },
+        { code: "ArrowRight", label: "▶" },
+      ],
+      actions: [{ code: "Space", label: "DISPARAR" }],
+    },
   },
   tetris: {
     Canvas: TetrisCanvas,
     initialState: { score: 0, lives: 1, level: 1, status: "playing" },
     hasSkins: true,
+    touchControls: {
+      dpad: [
+        { code: "ArrowLeft", label: "◀" },
+        { code: "ArrowDown", label: "▼" },
+        { code: "ArrowRight", label: "▶" },
+      ],
+      actions: [
+        { code: "ArrowUp", label: "ROTAR" },
+        { code: "Space", label: "CAÍDA" },
+      ],
+    },
   },
   arkanoid: {
     Canvas: ArkanoidCanvas,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
     hasSkins: true,
+    touchControls: {
+      dpad: [
+        { code: "ArrowLeft", label: "◀" },
+        { code: "ArrowRight", label: "▶" },
+      ],
+      actions: [],
+    },
   },
   snake: {
     Canvas: SnakeCanvas,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
     hasSkins: true,
+    touchControls: {
+      dpad: [
+        { code: "ArrowUp", label: "▲" },
+        { code: "ArrowLeft", label: "◀" },
+        { code: "ArrowDown", label: "▼" },
+        { code: "ArrowRight", label: "▶" },
+      ],
+      actions: [],
+    },
   },
 };
