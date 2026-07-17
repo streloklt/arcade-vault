@@ -1,6 +1,79 @@
 import type { GameState } from "@/components/games/registry";
+import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
 
 const CANVAS_W = 800;
+
+// Paleta de Arkanoid por skin. Solo tokens que este motor realmente dibuja:
+// fondo, colores de bloque por nombre (las mismas claves que BLOCK_SPRITES),
+// paleta, pelota y el shadowBlur del glow.
+//
+// El skin `clasico` conserva el spritesheet original (`sprites: true`): render
+// idéntico al look previo, sin regresión. `neon`/`retro` ignoran el spritesheet
+// y dibujan primitivas de canvas (rects/círculos) con estos colores, de modo que
+// la estética la define enteramente la paleta.
+interface ArkanoidPalette {
+  bg: string;
+  sprites: boolean; // true = usa spritesheet original (solo clasico)
+  blocks: Record<string, string>; // nombre-de-color -> relleno (neon/retro)
+  paddle: string;
+  ball: string;
+  glow: number; // shadowBlur; 0 = sin glow
+}
+
+const PALETTES: Record<SkinId, ArkanoidPalette> = {
+  // clasico: spritesheet original intacto; los colores de bloque solo sirven de
+  // fallback si el sprite faltara (no se usan mientras sprites=true).
+  clasico: {
+    bg: "#000",
+    sprites: true,
+    blocks: {
+      red: "#e5533b",
+      yellow: "#e5c33b",
+      cyan: "#3bc9e5",
+      magenta: "#c83be5",
+      hotpink: "#e53b9c",
+      green: "#3be55a",
+      gray: "#9aa0a6",
+    },
+    paddle: "#d0d4d8",
+    ball: "#ffffff",
+    glow: 0,
+  },
+  // neon: bloques saturados de alto contraste con glow tipo tubo de neón.
+  neon: {
+    bg: "#03030a",
+    sprites: false,
+    blocks: {
+      red: "#ff1f5a",
+      yellow: "#faff00",
+      cyan: "#00f5ff",
+      magenta: "#c800ff",
+      hotpink: "#ff5ec4",
+      green: "#00ff85",
+      gray: "#8ab4ff",
+    },
+    paddle: "#00f5ff",
+    ball: "#faff00",
+    glow: 12,
+  },
+  // retro: paleta apagada/terrosa, estética CRT 8-bit, sin glow.
+  retro: {
+    bg: "#0d0b07",
+    sprites: false,
+    blocks: {
+      red: "#a6533b",
+      yellow: "#c9a227",
+      cyan: "#5a8f8f",
+      magenta: "#8a6a8f",
+      hotpink: "#b0748c",
+      green: "#6a8f5a",
+      gray: "#8a8a7a",
+    },
+    paddle: "#d8c9a0",
+    ball: "#e6dcc0",
+    glow: 0,
+  },
+};
 
 const PADDLE_SPEED = 400;
 const BLOCK_COLS = 10;
@@ -193,14 +266,18 @@ export interface ArkanoidGame {
   stop(): void; // cancela el loop (usado por PAUSA y por unmount)
   restart(): void; // reproduce initPaddle()+loadLevel(1): score=0, lives=3, nivel=1
   forceGameOver(): void; // fuerza status="gameover" (usado por el botón FIN)
+  setSkin(id: SkinId): void; // cambia la paleta activa en caliente y redibuja
   destroy(): void; // limpia listeners de teclado/mouse y cancela el loop (unmount)
 }
 
 export function createArkanoidGame(
   canvas: HTMLCanvasElement,
   onStateChange: (state: GameState) => void,
+  initialSkin: SkinId = DEFAULT_SKIN,
 ): ArkanoidGame {
   const ctx = canvas.getContext("2d")!;
+
+  let palette: ArkanoidPalette = PALETTES[initialSkin];
 
   const bounceSound = new Audio(BOUNCE_SOUND_SRC);
   const breakSound = new Audio(BREAK_SOUND_SRC);
@@ -415,12 +492,80 @@ export function createArkanoidGame(
     notifyState();
   }
 
+  // Bloque como primitiva de canvas (neon/retro): relleno + borde interior claro
+  // para dar sensación de bisel, con glow opcional.
+  function drawBlockRect(block: GameBlock) {
+    const fill = palette.blocks[block.color] ?? palette.blocks.gray;
+    ctx.save();
+    if (palette.glow > 0) {
+      ctx.shadowBlur = palette.glow;
+      ctx.shadowColor = fill;
+    }
+    ctx.fillStyle = fill;
+    ctx.fillRect(block.x + 1, block.y + 1, block.w - 2, block.h - 2);
+    ctx.restore();
+  }
+
+  // Flash de destrucción cuando no hay spritesheet: rect del color del bloque que
+  // se expande y se desvanece según `elapsed`.
+  function drawExplosionRect(exp: Explosion) {
+    const t = exp.elapsed / EXPLOSION_DURATION; // 0..1
+    const alpha = Math.max(0, 1 - t);
+    const grow = t * 6;
+    const fill = palette.blocks[exp.color] ?? palette.blocks.gray;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (palette.glow > 0) {
+      ctx.shadowBlur = palette.glow;
+      ctx.shadowColor = fill;
+    }
+    ctx.fillStyle = fill;
+    ctx.fillRect(
+      exp.x - grow,
+      exp.y - grow,
+      exp.w + grow * 2,
+      exp.h + grow * 2,
+    );
+    ctx.restore();
+  }
+
+  function drawPaddleRect() {
+    ctx.save();
+    if (palette.glow > 0) {
+      ctx.shadowBlur = palette.glow;
+      ctx.shadowColor = palette.paddle;
+    }
+    ctx.fillStyle = palette.paddle;
+    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    ctx.restore();
+  }
+
+  function drawBallCircle() {
+    ctx.save();
+    if (palette.glow > 0) {
+      ctx.shadowBlur = palette.glow;
+      ctx.shadowColor = palette.ball;
+    }
+    ctx.fillStyle = palette.ball;
+    ctx.beginPath();
+    ctx.arc(
+      ball.x + ball.w / 2,
+      ball.y + ball.h / 2,
+      ball.w / 2,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+    ctx.restore();
+  }
+
   function draw() {
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = palette.bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     for (const block of blocks) {
-      if (block.alive)
+      if (!block.alive) continue;
+      if (palette.sprites)
         drawSprite(
           BLOCK_SPRITES[block.color],
           block.x,
@@ -428,19 +573,29 @@ export function createArkanoidGame(
           block.w,
           block.h,
         );
+      else drawBlockRect(block);
     }
 
     for (const exp of explosions) {
-      const frameIndex = Math.min(
-        Math.floor((exp.elapsed / EXPLOSION_DURATION) * 4),
-        3,
-      );
-      const frame = EXPLOSION_FRAMES[exp.color]?.[frameIndex];
-      if (frame) drawFrame(frame, exp.x, exp.y, exp.w, exp.h);
+      if (palette.sprites) {
+        const frameIndex = Math.min(
+          Math.floor((exp.elapsed / EXPLOSION_DURATION) * 4),
+          3,
+        );
+        const frame = EXPLOSION_FRAMES[exp.color]?.[frameIndex];
+        if (frame) drawFrame(frame, exp.x, exp.y, exp.w, exp.h);
+      } else {
+        drawExplosionRect(exp);
+      }
     }
 
-    drawSprite(SPRITES.paddle, paddle.x, paddle.y, paddle.w, paddle.h);
-    drawSprite(SPRITES.ball, ball.x, ball.y, ball.w, ball.h);
+    if (palette.sprites) {
+      drawSprite(SPRITES.paddle, paddle.x, paddle.y, paddle.w, paddle.h);
+      drawSprite(SPRITES.ball, ball.x, ball.y, ball.w, ball.h);
+    } else {
+      drawPaddleRect();
+      drawBallCircle();
+    }
   }
 
   function loop(timestamp: number) {
@@ -541,6 +696,12 @@ export function createArkanoidGame(
         rafId = null;
       }
       notifyState();
+    },
+    setSkin(id: SkinId) {
+      palette = PALETTES[id];
+      // Redibuja de inmediato para reflejar el cambio aunque el loop esté detenido
+      // (juego en pausa, aún sin arrancar o en game over).
+      draw();
     },
     destroy() {
       if (rafId !== null) {

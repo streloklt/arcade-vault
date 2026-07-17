@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
 import {
   createAsteroidsGame,
   type AsteroidsGame,
@@ -22,12 +23,13 @@ export interface AsteroidsCanvasHandle {
 
 interface AsteroidsCanvasProps {
   onStateChange: (state: AsteroidsState) => void;
+  skin?: SkinId;
 }
 
 export const AsteroidsCanvas = forwardRef<
   AsteroidsCanvasHandle,
   AsteroidsCanvasProps
->(function AsteroidsCanvas({ onStateChange }, ref) {
+>(function AsteroidsCanvas({ onStateChange, skin = DEFAULT_SKIN }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<AsteroidsGame | null>(null);
   const initializedRef = useRef(false);
@@ -40,7 +42,7 @@ export const AsteroidsCanvas = forwardRef<
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const game = createAsteroidsGame(canvas, onStateChange);
+    const game = createAsteroidsGame(canvas, onStateChange, skin);
     gameRef.current = game;
 
     return () => {
@@ -48,8 +50,12 @@ export const AsteroidsCanvas = forwardRef<
       gameRef.current = null;
       initializedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- el engine se instancia una sola vez por montaje
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- el engine se instancia una sola vez por montaje; el skin inicial se aplica acá y los cambios posteriores vía setSkin
   }, []);
+
+  useEffect(() => {
+    gameRef.current?.setSkin(skin);
+  }, [skin]);
 
   useEffect(() => {
     if (started) return;

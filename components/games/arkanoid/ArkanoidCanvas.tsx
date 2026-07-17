@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import type { GameState } from "@/components/games/registry";
+import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
 import { createArkanoidGame, type ArkanoidGame } from "./engine";
 
 export interface ArkanoidCanvasHandle {
@@ -19,12 +20,13 @@ export interface ArkanoidCanvasHandle {
 
 interface ArkanoidCanvasProps {
   onStateChange: (state: GameState) => void;
+  skin?: SkinId;
 }
 
 export const ArkanoidCanvas = forwardRef<
   ArkanoidCanvasHandle,
   ArkanoidCanvasProps
->(function ArkanoidCanvas({ onStateChange }, ref) {
+>(function ArkanoidCanvas({ onStateChange, skin = DEFAULT_SKIN }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<ArkanoidGame | null>(null);
   const initializedRef = useRef(false);
@@ -37,7 +39,7 @@ export const ArkanoidCanvas = forwardRef<
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const game = createArkanoidGame(canvas, onStateChange);
+    const game = createArkanoidGame(canvas, onStateChange, skin);
     gameRef.current = game;
 
     return () => {
@@ -45,8 +47,12 @@ export const ArkanoidCanvas = forwardRef<
       gameRef.current = null;
       initializedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- el engine se instancia una sola vez por montaje
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- el engine se instancia una sola vez por montaje; el skin inicial se aplica acá y los cambios posteriores vía setSkin
   }, []);
+
+  useEffect(() => {
+    gameRef.current?.setSkin(skin);
+  }, [skin]);
 
   useEffect(() => {
     if (started) return;

@@ -14,6 +14,7 @@ import type { AsteroidsState } from "@/components/games/asteroids/engine";
 import { ArkanoidCanvas } from "@/components/games/arkanoid/ArkanoidCanvas";
 import { TetrisCanvas } from "@/components/games/tetris/TetrisCanvas";
 import { SnakeCanvas } from "@/components/games/snake/SnakeCanvas";
+import type { SkinId } from "@/components/games/skins";
 
 export interface GameCanvasHandle {
   pause(): void;
@@ -32,6 +33,9 @@ export interface GameState {
 
 export interface GameCanvasProps {
   onStateChange: (state: GameState) => void;
+  // Skin activo. Opcional: los juegos aún no migrados lo ignoran y mantienen su
+  // look original hardcodeado.
+  skin?: SkinId;
 }
 
 export interface GameEngine {
@@ -39,13 +43,17 @@ export interface GameEngine {
     GameCanvasProps & RefAttributes<GameCanvasHandle>
   >;
   initialState: GameState;
+  // true solo para juegos cuyo engine.ts ya implementa paletas por SkinId.
+  // Controla si GamePlayer muestra el selector de skin en el HUD.
+  hasSkins?: boolean;
 }
 
 const AsteroidsAdapter = forwardRef<GameCanvasHandle, GameCanvasProps>(
-  function AsteroidsAdapter({ onStateChange }, ref) {
+  function AsteroidsAdapter({ onStateChange, skin }, ref) {
     return (
       <AsteroidsCanvas
         ref={ref as Ref<AsteroidsCanvasHandle>}
+        skin={skin}
         onStateChange={(state: AsteroidsState) =>
           onStateChange({
             score: state.score,
@@ -72,17 +80,21 @@ export const GAME_ENGINES: Record<string, GameEngine> = {
   asteroids: {
     Canvas: AsteroidsAdapter,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
+    hasSkins: true,
   },
   tetris: {
     Canvas: TetrisCanvas,
     initialState: { score: 0, lives: 1, level: 1, status: "playing" },
+    hasSkins: true,
   },
   arkanoid: {
     Canvas: ArkanoidCanvas,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
+    hasSkins: true,
   },
   snake: {
     Canvas: SnakeCanvas,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
+    hasSkins: true,
   },
 };
