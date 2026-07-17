@@ -40,6 +40,12 @@ export function GamePlayer({ game }: { game: Game }) {
   const [name, setName] = useState("INVITADO");
   const [saved, setSaved] = useState(false);
   const [skin, setSkin] = useState<SkinId>(DEFAULT_SKIN);
+  const showGamepad = isTouch && Boolean(engine?.touchControls);
+
+  useEffect(() => {
+    document.body.classList.toggle("av-hide-nav", showGamepad);
+    return () => document.body.classList.remove("av-hide-nav");
+  }, [showGamepad]);
 
   useEffect(() => {
     // localStorage no existe en SSR; el nombre se lee tras montar y sigue siendo editable localmente.
@@ -111,10 +117,7 @@ export function GamePlayer({ game }: { game: Game }) {
   return (
     <div className="av-player fade-in">
       <div className="player-hud">
-        <div
-          className="hud-stats"
-          style={{ display: "flex", gap: 24, flexWrap: "wrap" }}
-        >
+        <div className="hud-stats">
           <div className="hud-stat">
             <div className="l">Jugador</div>
             <div className="v" style={{ color: "var(--ink)" }}>
@@ -220,7 +223,7 @@ export function GamePlayer({ game }: { game: Game }) {
         </div>
       </div>
 
-      {isTouch && engine?.touchControls && (
+      {showGamepad && engine?.touchControls && (
         <TouchControls
           dpad={engine.touchControls.dpad}
           actions={engine.touchControls.actions}
