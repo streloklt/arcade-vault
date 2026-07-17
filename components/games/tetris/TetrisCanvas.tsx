@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { GameState } from "@/components/games/registry";
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import { useIsTouchDevice } from "@/lib/useIsTouchDevice";
 import { createTetrisGame, type TetrisGame } from "./engine";
 
 export interface TetrisCanvasHandle {
@@ -30,6 +31,7 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
     const gameRef = useRef<TetrisGame | null>(null);
     const initializedRef = useRef(false);
     const [started, setStarted] = useState(false);
+    const isTouch = useIsTouchDevice();
 
     useEffect(() => {
       if (initializedRef.current) return;
@@ -55,7 +57,7 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
     }, [skin]);
 
     useEffect(() => {
-      if (started) return;
+      if (started || isTouch) return;
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.code !== "Space") return;
         e.preventDefault();
@@ -64,7 +66,12 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
       };
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [started]);
+    }, [started, isTouch]);
+
+    const handleStart = () => {
+      setStarted(true);
+      gameRef.current?.start();
+    };
 
     useImperativeHandle(ref, () => ({
       pause() {
@@ -92,25 +99,36 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: "24px",
           }}
         >
-          <canvas
-            ref={boardRef}
-            width={300}
-            height={600}
-            style={{ display: "block" }}
-          />
-          <canvas
-            ref={nextRef}
-            width={120}
-            height={120}
-            style={{ display: "block" }}
-          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: "5.4%",
+              aspectRatio: "444 / 600",
+              maxWidth: "100%",
+              maxHeight: "100%",
+            }}
+          >
+            <canvas
+              ref={boardRef}
+              width={300}
+              height={600}
+              style={{ width: "67.6%", height: "100%", display: "block" }}
+            />
+            <canvas
+              ref={nextRef}
+              width={120}
+              height={120}
+              style={{ width: "27%", height: "auto", display: "block" }}
+            />
+          </div>
         </div>
         {!started && (
           <div
             className="pixel mono"
+            onClick={isTouch ? handleStart : undefined}
             style={{
               position: "absolute",
               inset: 0,
@@ -119,10 +137,13 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
               justifyContent: "center",
               color: "#fff",
               textAlign: "center",
-              pointerEvents: "none",
+              pointerEvents: isTouch ? "auto" : "none",
+              cursor: isTouch ? "pointer" : "default",
             }}
           >
-            TETRIS · PULSA ESPACIO PARA JUGAR
+            {isTouch
+              ? "TETRIS · TOCA PARA JUGAR"
+              : "TETRIS · PULSA ESPACIO PARA JUGAR"}
           </div>
         )}
       </div>

@@ -15,9 +15,12 @@ import {
   type GameState,
 } from "@/components/games/registry";
 import { DEFAULT_SKIN, SKINS, type SkinId } from "@/components/games/skins";
+import { TouchControls } from "@/components/TouchControls";
+import { useIsTouchDevice } from "@/lib/useIsTouchDevice";
 
 export function GamePlayer({ game }: { game: Game }) {
   const router = useRouter();
+  const isTouch = useIsTouchDevice();
   const engine = GAME_ENGINES[game.id];
   const canvasRef = useRef<GameCanvasHandle>(null);
   const [engineState, setEngineState] = useState<GameState>(
@@ -37,6 +40,12 @@ export function GamePlayer({ game }: { game: Game }) {
   const [name, setName] = useState("INVITADO");
   const [saved, setSaved] = useState(false);
   const [skin, setSkin] = useState<SkinId>(DEFAULT_SKIN);
+  const showGamepad = isTouch && Boolean(engine?.touchControls);
+
+  useEffect(() => {
+    document.body.classList.toggle("av-hide-nav", showGamepad);
+    return () => document.body.classList.remove("av-hide-nav");
+  }, [showGamepad]);
 
   useEffect(() => {
     // localStorage no existe en SSR; el nombre se lee tras montar y sigue siendo editable localmente.
@@ -108,7 +117,7 @@ export function GamePlayer({ game }: { game: Game }) {
   return (
     <div className="av-player fade-in">
       <div className="player-hud">
-        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+        <div className="hud-stats">
           <div className="hud-stat">
             <div className="l">Jugador</div>
             <div className="v" style={{ color: "var(--ink)" }}>
@@ -213,6 +222,13 @@ export function GamePlayer({ game }: { game: Game }) {
           <span>CARGA · 1MB</span>
         </div>
       </div>
+
+      {showGamepad && engine?.touchControls && (
+        <TouchControls
+          dpad={engine.touchControls.dpad}
+          actions={engine.touchControls.actions}
+        />
+      )}
 
       {over && (
         <div className="modal-bd">

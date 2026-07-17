@@ -288,6 +288,10 @@ a {
   display: none;
 }
 
+body.av-hide-nav .av-nav {
+  display: none;
+}
+
 @media (max-width: 840px) {
   .av-nav {
     padding: 12px 16px;
@@ -994,6 +998,11 @@ a {
   margin-bottom: 18px;
   flex-wrap: wrap;
   contain: paint;
+}
+.hud-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 .hud-stat {
   display: flex;
@@ -2813,4 +2822,149 @@ a {
   font-size: 13px;
   color: var(--ink-dim);
   line-height: 1.6;
+}
+
+/* ===== touch controls ===== */
+.touch-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 18px 28px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.touch-controls-group {
+  display: flex;
+}
+.touch-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 14px;
+  user-select: none;
+}
+.touch-btn-disabled,
+.touch-btn:disabled {
+  opacity: 0.3;
+  filter: grayscale(1);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* dpad como roseta de joystick: cruz de botones sobre un plato circular */
+.touch-controls .touch-controls-dpad {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 52px);
+  gap: 4px;
+  padding: 10px;
+  border-radius: 50%;
+}
+.touch-controls-dpad::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.07), transparent 72%);
+  border: 1px solid var(--line);
+}
+.touch-controls-dpad .touch-btn {
+  position: relative;
+  border-radius: 10px;
+  clip-path: none;
+}
+.touch-controls-dpad .touch-btn::before {
+  border-radius: 8px;
+  clip-path: none;
+}
+.touch-controls-dpad .dpad-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+.touch-controls-dpad .dpad-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+.touch-controls-dpad .dpad-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+.touch-controls-dpad .dpad-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+/* A/B: círculos estilo consola, B más abajo que A */
+.touch-controls-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 56px);
+  grid-template-rows: repeat(2, 56px);
+  gap: 10px;
+  align-items: center;
+}
+.touch-controls-actions .touch-btn {
+  min-width: 0;
+  min-height: 0;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  clip-path: none;
+}
+.touch-controls-actions .touch-btn::before {
+  border-radius: 50%;
+}
+.touch-controls-actions .touch-btn:first-child {
+  grid-column: 2;
+  grid-row: 1;
+}
+.touch-controls-actions .touch-btn:last-child {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* ===== responsive: mobile ===== */
+@media (max-width: 768px) {
+  .av-player {
+    padding: 0 12px 40px;
+  }
+  .crt {
+    padding: 12px;
+    border-radius: 18px;
+  }
+  .crt-screen {
+    max-width: 100%;
+  }
+
+  .player-hud {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 12px 14px;
+  }
+  .hud-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px 16px;
+  }
+  .hud-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    gap: 8px;
+  }
+  .hud-actions .btn {
+    width: 100%;
+    padding: 12px 8px;
+  }
+
+  .touch-controls {
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin-top: 20px;
+    padding: 12px;
+    gap: 12px;
+  }
 }
