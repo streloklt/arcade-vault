@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { GameState } from "@/components/games/registry";
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import { useIsTouchDevice } from "@/lib/useIsTouchDevice";
 import { createSnakeGame, type SnakeGame } from "./engine";
 
 export interface SnakeCanvasHandle {
@@ -29,6 +30,7 @@ export const SnakeCanvas = forwardRef<SnakeCanvasHandle, SnakeCanvasProps>(
     const gameRef = useRef<SnakeGame | null>(null);
     const initializedRef = useRef(false);
     const [started, setStarted] = useState(false);
+    const isTouch = useIsTouchDevice();
 
     useEffect(() => {
       if (initializedRef.current) return;
@@ -53,7 +55,7 @@ export const SnakeCanvas = forwardRef<SnakeCanvasHandle, SnakeCanvasProps>(
     }, [skin]);
 
     useEffect(() => {
-      if (started) return;
+      if (started || isTouch) return;
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.code !== "Space") return;
         e.preventDefault();
@@ -62,7 +64,12 @@ export const SnakeCanvas = forwardRef<SnakeCanvasHandle, SnakeCanvasProps>(
       };
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [started]);
+    }, [started, isTouch]);
+
+    const handleStart = () => {
+      setStarted(true);
+      gameRef.current?.start();
+    };
 
     useImperativeHandle(ref, () => ({
       pause() {
@@ -92,6 +99,7 @@ export const SnakeCanvas = forwardRef<SnakeCanvasHandle, SnakeCanvasProps>(
         {!started && (
           <div
             className="pixel mono"
+            onClick={isTouch ? handleStart : undefined}
             style={{
               position: "absolute",
               inset: 0,
@@ -100,10 +108,13 @@ export const SnakeCanvas = forwardRef<SnakeCanvasHandle, SnakeCanvasProps>(
               justifyContent: "center",
               color: "#fff",
               textAlign: "center",
-              pointerEvents: "none",
+              pointerEvents: isTouch ? "auto" : "none",
+              cursor: isTouch ? "pointer" : "default",
             }}
           >
-            SNAKE · PULSA ESPACIO PARA JUGAR
+            {isTouch
+              ? "SNAKE · TOCA PARA JUGAR"
+              : "SNAKE · PULSA ESPACIO PARA JUGAR"}
           </div>
         )}
       </div>

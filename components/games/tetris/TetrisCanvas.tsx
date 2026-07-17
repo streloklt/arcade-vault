@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { GameState } from "@/components/games/registry";
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import { useIsTouchDevice } from "@/lib/useIsTouchDevice";
 import { createTetrisGame, type TetrisGame } from "./engine";
 
 export interface TetrisCanvasHandle {
@@ -30,6 +31,7 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
     const gameRef = useRef<TetrisGame | null>(null);
     const initializedRef = useRef(false);
     const [started, setStarted] = useState(false);
+    const isTouch = useIsTouchDevice();
 
     useEffect(() => {
       if (initializedRef.current) return;
@@ -55,7 +57,7 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
     }, [skin]);
 
     useEffect(() => {
-      if (started) return;
+      if (started || isTouch) return;
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.code !== "Space") return;
         e.preventDefault();
@@ -64,7 +66,12 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
       };
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [started]);
+    }, [started, isTouch]);
+
+    const handleStart = () => {
+      setStarted(true);
+      gameRef.current?.start();
+    };
 
     useImperativeHandle(ref, () => ({
       pause() {
@@ -121,6 +128,7 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
         {!started && (
           <div
             className="pixel mono"
+            onClick={isTouch ? handleStart : undefined}
             style={{
               position: "absolute",
               inset: 0,
@@ -129,10 +137,13 @@ export const TetrisCanvas = forwardRef<TetrisCanvasHandle, TetrisCanvasProps>(
               justifyContent: "center",
               color: "#fff",
               textAlign: "center",
-              pointerEvents: "none",
+              pointerEvents: isTouch ? "auto" : "none",
+              cursor: isTouch ? "pointer" : "default",
             }}
           >
-            TETRIS · PULSA ESPACIO PARA JUGAR
+            {isTouch
+              ? "TETRIS · TOCA PARA JUGAR"
+              : "TETRIS · PULSA ESPACIO PARA JUGAR"}
           </div>
         )}
       </div>
