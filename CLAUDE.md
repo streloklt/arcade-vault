@@ -48,3 +48,7 @@ Usar `/spec` para producir una spec antes de implementar una feature, luego `/sp
 - Usa siempre `/frontend-design` para diseñar la interfaz de usuario.
 - `/add-game` (`.claude/skills/add-game`): genera la spec de un juego nuevo (motor + leaderboard + catálogo) siguiendo el patrón de las specs 05/06, sin escribir código de producción. Úsalo antes de `/spec-impl` cuando se sume un juego jugable al vault.
 - `/graphify`: convierte el repo (o cualquier input) en un grafo de conocimiento persistente en `graphify-out/`; tratar cualquier pregunta sobre arquitectura/relaciones del código como consulta a ese grafo si ya existe.
+
+## Agentes
+
+- **`game-planner`** (`.claude/agents/game-planner.md`): subagente que analiza la plataforma y recomienda el próximo juego a sumar (single-player, canvas, teclado, con score para leaderboard), evaluando encaje contra el catálogo actual y la categoría/color libres. Mantiene memoria de sugerencias previas (propuestas, descartadas, implementadas) en `references/game-suggestions-todo.md` para no repetirse. Solo recomienda — no escribe specs ni código; el paso siguiente es correr `/add-game` con el juego elegido.
