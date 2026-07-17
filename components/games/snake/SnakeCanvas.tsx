@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import type { GameState } from "@/components/games/registry";
+import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
 import { createSnakeGame, type SnakeGame } from "./engine";
 
 export interface SnakeCanvasHandle {
@@ -19,10 +20,11 @@ export interface SnakeCanvasHandle {
 
 interface SnakeCanvasProps {
   onStateChange: (state: GameState) => void;
+  skin?: SkinId;
 }
 
 export const SnakeCanvas = forwardRef<SnakeCanvasHandle, SnakeCanvasProps>(
-  function SnakeCanvas({ onStateChange }, ref) {
+  function SnakeCanvas({ onStateChange, skin = DEFAULT_SKIN }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gameRef = useRef<SnakeGame | null>(null);
     const initializedRef = useRef(false);
@@ -35,7 +37,7 @@ export const SnakeCanvas = forwardRef<SnakeCanvasHandle, SnakeCanvasProps>(
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      const game = createSnakeGame(canvas, onStateChange);
+      const game = createSnakeGame(canvas, onStateChange, skin);
       gameRef.current = game;
 
       return () => {
@@ -43,8 +45,12 @@ export const SnakeCanvas = forwardRef<SnakeCanvasHandle, SnakeCanvasProps>(
         gameRef.current = null;
         initializedRef.current = false;
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- el engine se instancia una sola vez por montaje
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- el engine se instancia una sola vez por montaje; el skin inicial se aplica acá y los cambios posteriores vía setSkin
     }, []);
+
+    useEffect(() => {
+      gameRef.current?.setSkin(skin);
+    }, [skin]);
 
     useEffect(() => {
       if (started) return;

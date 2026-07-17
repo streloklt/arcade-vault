@@ -63,13 +63,30 @@ Estados:
 ### Arkanoid
 
 - Fecha: 2026-07-17
-- Estado: sin-skins
-- Skins: —
-- Descripción: sin paleta configurable; render en `components/games/arkanoid/engine.ts`.
+- Estado: con-skins
+- Skins: clasico (default), neon, retro
+- Descripción:
+  - `clasico`: usa el spritesheet original (`spritesheet-breakout.png`) tal cual, fondo `#000`,
+    sin glow. Cero regresión visual.
+  - `neon`/`retro`: ignoran el spritesheet y dibujan primitivas de canvas (bloques con bisel,
+    pelota circular); `neon` con `shadowBlur` tipo tubo sobre fondo `#03030a`; `retro` con
+    colores terrosos sin glow sobre fondo `#0d0b07`.
+  - Paleta por skin en `Record<SkinId, ArkanoidPalette>` (flag `sprites: boolean` decide si se
+    usa el spritesheet o primitivas), inyectada vía prop `skin` → `setSkin(id)`; persistida
+    global en `av_skin` (`components/games/arkanoid/engine.ts`).
 
 ### Snake
 
 - Fecha: 2026-07-17
-- Estado: sin-skins
-- Skins: —
-- Descripción: colores hardcodeados en `BODY_COLOR`/`HEAD_COLOR`/`BG_COLOR` (`components/games/snake/engine.ts`).
+- Estado: con-skins
+- Skins: clasico (default), neon, retro
+- Descripción:
+  - `clasico`: look original preservado exacto (cuerpo `#16a34a`, cabeza `#4ade80`) sobre
+    fondo negro `#0a0a0a`, grilla blanca translúcida `rgba(255,255,255,0.05)`, sin glow.
+  - `neon`: verde saturado de alto contraste (cuerpo `#00ff85`, cabeza `#5cff5c`) con glow
+    tipo tubo de neón vía `shadowBlur` sobre fondo casi negro azulado `#03030a`, grilla verde
+    translúcida.
+  - `retro`: paleta oliva/terrosa 8-bit (cuerpo `#6b8f4e`, cabeza `#a7c072`) sobre fondo verde
+    muy oscuro `#0d0f08`, grilla oliva translúcida, estética CRT sin glow.
+  - Paleta por skin en `Record<SkinId, SnakePalette>` (`components/games/snake/engine.ts`),
+    inyectada vía prop `skin` → `setSkin(id)`; persistida global en `av_skin`.

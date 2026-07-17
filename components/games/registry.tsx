@@ -90,9 +90,11 @@ export const GAME_ENGINES: Record<string, GameEngine> = {
   arkanoid: {
     Canvas: ArkanoidCanvas,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
+    hasSkins: true,
   },
   snake: {
     Canvas: SnakeCanvas,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
+    hasSkins: true,
   },
 };

@@ -1,4 +1,5 @@
 import type { GameState } from "@/components/games/registry";
+import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
 import {
   FRUIT_ATLAS,
   FRUIT_ATLAS_SOURCE,
@@ -15,10 +16,44 @@ const LEVEL_SPEED_MULT = 0.9;
 const FRUITS_PER_LEVEL = 5;
 const INPUT_QUEUE_MAX = 2;
 
-const BODY_COLOR = "#16a34a";
-const HEAD_COLOR = "#4ade80";
-const BG_COLOR = "#0a0a0a";
-const GRID_LINE_COLOR = "rgba(255,255,255,0.05)";
+// Tokens de color que el motor de Snake realmente usa. Cada skin del contrato
+// compartido (`SkinId`) define una paleta completa; `clasico` preserva exacto el
+// look original hardcodeado.
+interface SnakePalette {
+  bg: string; // fondo del tablero
+  gridLine: string; // líneas de la grilla
+  body: string; // cuerpo de la serpiente
+  head: string; // cabeza de la serpiente
+  glow: number; // shadowBlur para efecto neón (0 = sin glow)
+}
+
+const PALETTES: Record<SkinId, SnakePalette> = {
+  // Look original preservado exacto: verde vivo sobre negro, grilla blanca sutil.
+  clasico: {
+    bg: "#0a0a0a",
+    gridLine: "rgba(255,255,255,0.05)",
+    body: "#16a34a",
+    head: "#4ade80",
+    glow: 0,
+  },
+  // Verde saturado de alto contraste con glow tipo tubo de neón sobre fondo casi
+  // negro azulado.
+  neon: {
+    bg: "#03030a",
+    gridLine: "rgba(0,255,133,0.09)",
+    body: "#00ff85",
+    head: "#5cff5c",
+    glow: 16,
+  },
+  // Paleta oliva/terrosa 8-bit, estética CRT sin glow, sobre fondo verde muy oscuro.
+  retro: {
+    bg: "#0d0f08",
+    gridLine: "rgba(120,140,90,0.08)",
+    body: "#6b8f4e",
+    head: "#a7c072",
+    glow: 0,
+  },
+};
 
 interface Vec2 {
   x: number;
@@ -50,14 +85,18 @@ export interface SnakeGame {
   stop(): void; // cancela el loop (PAUSA/unmount)
   restart(): void; // score=0, lives=3, level=1, serpiente en largo/posición inicial
   forceGameOver(): void; // fuerza status="gameover"
+  setSkin(id: SkinId): void; // cambia la paleta activa en caliente y redibuja
   destroy(): void; // limpia listeners de teclado y cancela el loop
 }
 
 export function createSnakeGame(
   canvas: HTMLCanvasElement,
   onStateChange: (state: GameState) => void,
+  initialSkin: SkinId = DEFAULT_SKIN,
 ): SnakeGame {
   const ctx = canvas.getContext("2d")!;
+
+  let palette: SnakePalette = PALETTES[initialSkin];
 
   let fruitImg: HTMLImageElement | null = null;
   let fruitImgLoaded = false;
@@ -215,10 +254,11 @@ export function createSnakeGame(
   }
 
   function draw() {
-    ctx.fillStyle = BG_COLOR;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = palette.bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = GRID_LINE_COLOR;
+    ctx.strokeStyle = palette.gridLine;
     ctx.lineWidth = 1;
     for (let i = 0; i <= GRID_SIZE; i++) {
       ctx.beginPath();
@@ -247,9 +287,15 @@ export function createSnakeGame(
     }
 
     segments.forEach((seg, i) => {
-      ctx.fillStyle = i === 0 ? HEAD_COLOR : BODY_COLOR;
+      const color = i === 0 ? palette.head : palette.body;
+      if (palette.glow > 0) {
+        ctx.shadowBlur = palette.glow;
+        ctx.shadowColor = color;
+      }
+      ctx.fillStyle = color;
       ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
     });
+    ctx.shadowBlur = 0;
   }
 
   function loop(timestamp: number) {
@@ -337,6 +383,10 @@ export function createSnakeGame(
         rafId = null;
       }
       notifyState();
+    },
+    setSkin(id: SkinId) {
+      palette = PALETTES[id];
+      draw();
     },
     destroy() {
       if (rafId !== null) {
