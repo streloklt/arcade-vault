@@ -1,5 +1,6 @@
 import type { GameState } from "@/components/games/registry";
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import { drawGlowSprite, getGlowSprite } from "@/components/games/glowSprite";
 
 export interface FroggerGame {
   start(): void; // arranca el requestAnimationFrame loop
@@ -192,6 +193,7 @@ export function createFroggerGame(
   const ctx = canvas.getContext("2d");
 
   let palette: FroggerPalette = PALETTES[initialSkin];
+  let currentSkin: SkinId = initialSkin;
 
   let frog: FrogPos = {
     x: START_CELL.col * CELL,
@@ -393,18 +395,27 @@ export function createFroggerGame(
       ctx.arc(cx, cy, CELL * 0.4, 0, Math.PI * 2);
       ctx.fill();
       if (homeOccupied[i]) {
+        const hx = col * CELL + CELL * 0.25;
+        const hy = CELL * 0.25;
+        const hw = CELL * 0.5;
+        const hh = CELL * 0.5;
         if (palette.glow > 0) {
-          ctx.shadowBlur = palette.glow;
-          ctx.shadowColor = palette.homeFrog;
+          const sprite = getGlowSprite(
+            `frogger:home:${currentSkin}`,
+            hw,
+            hh,
+            palette.glow,
+            palette.homeFrog,
+            (sctx) => {
+              sctx.fillStyle = palette.homeFrog;
+              sctx.fillRect(0, 0, hw, hh);
+            },
+          );
+          drawGlowSprite(ctx, sprite, hx, hy);
+        } else {
+          ctx.fillStyle = palette.homeFrog;
+          ctx.fillRect(hx, hy, hw, hh);
         }
-        ctx.fillStyle = palette.homeFrog;
-        ctx.fillRect(
-          col * CELL + CELL * 0.25,
-          CELL * 0.25,
-          CELL * 0.5,
-          CELL * 0.5,
-        );
-        ctx.shadowBlur = 0;
       }
     });
   }
@@ -414,20 +425,29 @@ export function createFroggerGame(
     for (const lane of roadLanes) {
       for (const v of lane.vehicles) {
         const color = palette.vehicles[v.colorIndex];
+        const vx = v.x + 2;
+        const vy = lane.row * CELL + 4;
+        const vw = v.lengthCells * CELL - 4;
+        const vh = CELL - 8;
         if (palette.glow > 0) {
-          ctx.shadowBlur = palette.glow;
-          ctx.shadowColor = color;
+          const sprite = getGlowSprite(
+            `frogger:vehicle:${currentSkin}:${v.colorIndex}:${v.lengthCells}`,
+            vw,
+            vh,
+            palette.glow,
+            color,
+            (sctx) => {
+              sctx.fillStyle = color;
+              sctx.fillRect(0, 0, vw, vh);
+            },
+          );
+          drawGlowSprite(ctx, sprite, vx, vy);
+        } else {
+          ctx.fillStyle = color;
+          ctx.fillRect(vx, vy, vw, vh);
         }
-        ctx.fillStyle = color;
-        ctx.fillRect(
-          v.x + 2,
-          lane.row * CELL + 4,
-          v.lengthCells * CELL - 4,
-          CELL - 8,
-        );
       }
     }
-    ctx.shadowBlur = 0;
   }
 
   function drawPlatforms() {
@@ -437,49 +457,84 @@ export function createFroggerGame(
         const w = p.lengthCells * CELL;
         const y = lane.row * CELL;
         if (p.type === "log") {
+          const lx = p.x + 2;
+          const ly = y + 4;
+          const lw = w - 4;
+          const lh = CELL - 8;
           if (palette.glow > 0) {
-            ctx.shadowBlur = palette.glow;
-            ctx.shadowColor = palette.log;
+            const sprite = getGlowSprite(
+              `frogger:log:${currentSkin}:${p.lengthCells}`,
+              lw,
+              lh,
+              palette.glow,
+              palette.log,
+              (sctx) => {
+                sctx.fillStyle = palette.log;
+                sctx.fillRect(0, 0, lw, lh);
+              },
+            );
+            drawGlowSprite(ctx, sprite, lx, ly);
+          } else {
+            ctx.fillStyle = palette.log;
+            ctx.fillRect(lx, ly, lw, lh);
           }
-          ctx.fillStyle = palette.log;
-          ctx.fillRect(p.x + 2, y + 4, w - 4, CELL - 8);
         } else {
+          const drawTurtle = (sctx: CanvasRenderingContext2D) => {
+            sctx.fillStyle = palette.turtle;
+            sctx.beginPath();
+            sctx.ellipse(
+              w / 2,
+              CELL / 2,
+              w / 2 - 2,
+              CELL / 2 - 4,
+              0,
+              0,
+              Math.PI * 2,
+            );
+            sctx.fill();
+          };
           if (palette.glow > 0) {
-            ctx.shadowBlur = palette.glow;
-            ctx.shadowColor = palette.turtle;
+            const sprite = getGlowSprite(
+              `frogger:turtle:${currentSkin}:${p.lengthCells}`,
+              w,
+              CELL,
+              palette.glow,
+              palette.turtle,
+              drawTurtle,
+            );
+            drawGlowSprite(ctx, sprite, p.x, y);
+          } else {
+            ctx.translate(p.x, y);
+            drawTurtle(ctx);
+            ctx.translate(-p.x, -y);
           }
-          ctx.fillStyle = palette.turtle;
-          ctx.beginPath();
-          ctx.ellipse(
-            p.x + w / 2,
-            y + CELL / 2,
-            w / 2 - 2,
-            CELL / 2 - 4,
-            0,
-            0,
-            Math.PI * 2,
-          );
-          ctx.fill();
         }
-        ctx.shadowBlur = 0;
       }
     }
   }
 
   function drawFrog() {
     if (!ctx) return;
+    const fx = frog.x + CELL * 0.15;
+    const fy = frog.y + CELL * 0.15;
+    const fs = CELL * 0.7;
     if (palette.glow > 0) {
-      ctx.shadowBlur = palette.glow;
-      ctx.shadowColor = palette.frog;
+      const sprite = getGlowSprite(
+        `frogger:frog:${currentSkin}`,
+        fs,
+        fs,
+        palette.glow,
+        palette.frog,
+        (sctx) => {
+          sctx.fillStyle = palette.frog;
+          sctx.fillRect(0, 0, fs, fs);
+        },
+      );
+      drawGlowSprite(ctx, sprite, fx, fy);
+    } else {
+      ctx.fillStyle = palette.frog;
+      ctx.fillRect(fx, fy, fs, fs);
     }
-    ctx.fillStyle = palette.frog;
-    ctx.fillRect(
-      frog.x + CELL * 0.15,
-      frog.y + CELL * 0.15,
-      CELL * 0.7,
-      CELL * 0.7,
-    );
-    ctx.shadowBlur = 0;
   }
 
   function draw() {
@@ -549,6 +604,7 @@ export function createFroggerGame(
 
   function setSkin(id: SkinId) {
     palette = PALETTES[id];
+    currentSkin = id;
     draw();
   }
 

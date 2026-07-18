@@ -87,17 +87,15 @@ export function getInstanceGlowSprite(
   return sprite;
 }
 
-// Dibuja un sprite cacheado centrado en (centerX, centerY), la convención que ya usan
-// los engines para posicionar formas con glow.
+// Dibuja un sprite cacheado en (x, y), donde (x, y) es el mismo punto de anclaje que
+// usaba `draw()` al dibujar la forma sin glow dentro del sprite (normalmente la
+// esquina superior izquierda del bounding box, igual que un `fillRect(x, y, w, h)`
+// original). El offset del sprite compensa el margen del blur.
 export function drawGlowSprite(
   ctx: CanvasRenderingContext2D,
   sprite: GlowSprite,
-  centerX: number,
-  centerY: number,
+  x: number,
+  y: number,
 ): void {
-  ctx.drawImage(
-    sprite.canvas,
-    centerX - sprite.offsetX,
-    centerY - sprite.offsetY,
-  );
+  ctx.drawImage(sprite.canvas, x - sprite.offsetX, y - sprite.offsetY);
 }
