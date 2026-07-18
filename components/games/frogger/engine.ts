@@ -1,10 +1,12 @@
 import type { GameState } from "@/components/games/registry";
+import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
 
 export interface FroggerGame {
   start(): void; // arranca el requestAnimationFrame loop
   stop(): void; // cancela el loop (usado por PAUSA y por unmount)
   restart(): void; // score=0, lives=3, level=1, nenúfares vacíos, rana en inicio, timer=30
   forceGameOver(): void; // fuerza status="gameover" (botón FIN)
+  setSkin(id: SkinId): void; // cambia la paleta activa en caliente y redibuja
   destroy(): void; // limpia listeners de teclado y cancela el loop (unmount)
 }
 
@@ -31,7 +33,7 @@ const ROAD_ROWS = [7, 8, 9, 10, 11];
 interface Vehicle {
   x: number; // px, esquina izquierda
   lengthCells: 1 | 2;
-  color: string;
+  colorIndex: number; // índice en palette.vehicles; el color se resuelve al dibujar
 }
 interface RoadLane {
   row: number; // 7..11
@@ -57,16 +59,65 @@ interface FrogPos {
   y: number; // px
 }
 
-const COLOR_WATER = "#0a3d62";
-const COLOR_GRASS = "#1e6b2e";
-const COLOR_ASPHALT = "#2b2b2b";
-const COLOR_FROG = "#7CFC00";
-const COLOR_HOME_EMPTY = "rgba(255,255,255,0.15)";
-const COLOR_HOME_FROG = "#7CFC00";
-const COLOR_LOG = "#8b5a2b";
-const COLOR_TURTLE = "#2e8b57";
+// Tokens de color que el motor de Frogger realmente usa. Cada skin del contrato
+// compartido (`SkinId`) define una paleta completa; `clasico` preserva exacto el
+// look original hardcodeado.
+interface FroggerPalette {
+  water: string; // agua de la meta (fila 0) y del río (filas 1-5)
+  grass: string; // mediana segura (fila 6) y zona de inicio (fila 12)
+  asphalt: string; // autopista (filas 7-11)
+  frog: string; // la rana y las ranas ya en meta
+  homeEmpty: string; // nenúfar vacío
+  homeFrog: string; // nenúfar ocupado
+  log: string; // tronco flotante
+  turtle: string; // tortuga flotante
+  vehicles: [string, string, string, string, string]; // 5 colores de vehículos por lane
+  glow: number; // shadowBlur para efecto neón (0 = sin glow)
+}
 
-const VEHICLE_COLORS = ["#e74c3c", "#f39c12", "#9b59b6", "#e67e22", "#3498db"];
+const PALETTES: Record<SkinId, FroggerPalette> = {
+  // Look original preservado exacto.
+  clasico: {
+    water: "#0a3d62",
+    grass: "#1e6b2e",
+    asphalt: "#2b2b2b",
+    frog: "#7CFC00",
+    homeEmpty: "rgba(255,255,255,0.15)",
+    homeFrog: "#7CFC00",
+    log: "#8b5a2b",
+    turtle: "#2e8b57",
+    vehicles: ["#e74c3c", "#f39c12", "#9b59b6", "#e67e22", "#3498db"],
+    glow: 0,
+  },
+  // Saturado, alto contraste, con glow tipo tubo de neón sobre superficies casi
+  // negras: el agua y el asfalto se oscurecen para que rana, troncos y vehículos
+  // brillen.
+  neon: {
+    water: "#001b33",
+    grass: "#0d2b1a",
+    asphalt: "#0a0a12",
+    frog: "#39ff14",
+    homeEmpty: "rgba(0,255,180,0.18)",
+    homeFrog: "#39ff14",
+    log: "#ff8c1a",
+    turtle: "#00e5c7",
+    vehicles: ["#ff2079", "#faff00", "#b026ff", "#ff5e00", "#00e5ff"],
+    glow: 12,
+  },
+  // Paleta apagada/terrosa 8-bit, estética CRT sin glow.
+  retro: {
+    water: "#1b3a4a",
+    grass: "#35502a",
+    asphalt: "#3a3a34",
+    frog: "#b0cf72",
+    homeEmpty: "rgba(220,210,180,0.14)",
+    homeFrog: "#b0cf72",
+    log: "#6e4a2a",
+    turtle: "#4a7a5a",
+    vehicles: ["#b5533f", "#c99a3f", "#7a5a8f", "#b5763f", "#4a7391"],
+    glow: 0,
+  },
+};
 
 function makeRoadLanes(): RoadLane[] {
   const laneWidth = COLS * CELL;
@@ -78,7 +129,7 @@ function makeRoadLanes(): RoadLane[] {
     const vehicles: Vehicle[] = [0, 1, 2].map((n) => ({
       x: n * spacing,
       lengthCells,
-      color: VEHICLE_COLORS[i % VEHICLE_COLORS.length],
+      colorIndex: i % 5,
     }));
     return { row, dir, speed, vehicles };
   });
@@ -136,8 +187,11 @@ function wrapObject(
 export function createFroggerGame(
   canvas: HTMLCanvasElement,
   onStateChange: (state: GameState) => void,
+  initialSkin: SkinId = DEFAULT_SKIN,
 ): FroggerGame {
   const ctx = canvas.getContext("2d");
+
+  let palette: FroggerPalette = PALETTES[initialSkin];
 
   let frog: FrogPos = {
     x: START_CELL.col * CELL,
@@ -306,11 +360,11 @@ export function createFroggerGame(
     if (!ctx) return;
 
     // Fila 0: meta (agua con nenúfares).
-    ctx.fillStyle = COLOR_WATER;
+    ctx.fillStyle = palette.water;
     ctx.fillRect(0, 0, COLS * CELL, CELL);
 
     // Filas 1-5: río.
-    ctx.fillStyle = COLOR_WATER;
+    ctx.fillStyle = palette.water;
     ctx.fillRect(
       0,
       RIVER_ROWS[0] * CELL,
@@ -319,33 +373,38 @@ export function createFroggerGame(
     );
 
     // Fila 6: mediana segura.
-    ctx.fillStyle = COLOR_GRASS;
+    ctx.fillStyle = palette.grass;
     ctx.fillRect(0, SAFE_MEDIAN_ROW * CELL, COLS * CELL, CELL);
 
     // Filas 7-11: autopista.
-    ctx.fillStyle = COLOR_ASPHALT;
+    ctx.fillStyle = palette.asphalt;
     ctx.fillRect(0, ROAD_ROWS[0] * CELL, COLS * CELL, ROAD_ROWS.length * CELL);
 
     // Fila 12: zona de inicio.
-    ctx.fillStyle = COLOR_GRASS;
+    ctx.fillStyle = palette.grass;
     ctx.fillRect(0, START_CELL.row * CELL, COLS * CELL, CELL);
 
     // Nenúfares (fila 0).
     HOME_COLS.forEach((col, i) => {
       const cx = col * CELL + CELL / 2;
       const cy = CELL / 2;
-      ctx.fillStyle = COLOR_HOME_EMPTY;
+      ctx.fillStyle = palette.homeEmpty;
       ctx.beginPath();
       ctx.arc(cx, cy, CELL * 0.4, 0, Math.PI * 2);
       ctx.fill();
       if (homeOccupied[i]) {
-        ctx.fillStyle = COLOR_HOME_FROG;
+        if (palette.glow > 0) {
+          ctx.shadowBlur = palette.glow;
+          ctx.shadowColor = palette.homeFrog;
+        }
+        ctx.fillStyle = palette.homeFrog;
         ctx.fillRect(
           col * CELL + CELL * 0.25,
           CELL * 0.25,
           CELL * 0.5,
           CELL * 0.5,
         );
+        ctx.shadowBlur = 0;
       }
     });
   }
@@ -354,7 +413,12 @@ export function createFroggerGame(
     if (!ctx) return;
     for (const lane of roadLanes) {
       for (const v of lane.vehicles) {
-        ctx.fillStyle = v.color;
+        const color = palette.vehicles[v.colorIndex];
+        if (palette.glow > 0) {
+          ctx.shadowBlur = palette.glow;
+          ctx.shadowColor = color;
+        }
+        ctx.fillStyle = color;
         ctx.fillRect(
           v.x + 2,
           lane.row * CELL + 4,
@@ -363,6 +427,7 @@ export function createFroggerGame(
         );
       }
     }
+    ctx.shadowBlur = 0;
   }
 
   function drawPlatforms() {
@@ -372,10 +437,18 @@ export function createFroggerGame(
         const w = p.lengthCells * CELL;
         const y = lane.row * CELL;
         if (p.type === "log") {
-          ctx.fillStyle = COLOR_LOG;
+          if (palette.glow > 0) {
+            ctx.shadowBlur = palette.glow;
+            ctx.shadowColor = palette.log;
+          }
+          ctx.fillStyle = palette.log;
           ctx.fillRect(p.x + 2, y + 4, w - 4, CELL - 8);
         } else {
-          ctx.fillStyle = COLOR_TURTLE;
+          if (palette.glow > 0) {
+            ctx.shadowBlur = palette.glow;
+            ctx.shadowColor = palette.turtle;
+          }
+          ctx.fillStyle = palette.turtle;
           ctx.beginPath();
           ctx.ellipse(
             p.x + w / 2,
@@ -388,19 +461,25 @@ export function createFroggerGame(
           );
           ctx.fill();
         }
+        ctx.shadowBlur = 0;
       }
     }
   }
 
   function drawFrog() {
     if (!ctx) return;
-    ctx.fillStyle = COLOR_FROG;
+    if (palette.glow > 0) {
+      ctx.shadowBlur = palette.glow;
+      ctx.shadowColor = palette.frog;
+    }
+    ctx.fillStyle = palette.frog;
     ctx.fillRect(
       frog.x + CELL * 0.15,
       frog.y + CELL * 0.15,
       CELL * 0.7,
       CELL * 0.7,
     );
+    ctx.shadowBlur = 0;
   }
 
   function draw() {
@@ -468,10 +547,15 @@ export function createFroggerGame(
     emitState();
   }
 
+  function setSkin(id: SkinId) {
+    palette = PALETTES[id];
+    draw();
+  }
+
   function destroy() {
     stop();
     window.removeEventListener("keydown", handleKeyDown);
   }
 
-  return { start, stop, restart, forceGameOver, destroy };
+  return { start, stop, restart, forceGameOver, setSkin, destroy };
 }

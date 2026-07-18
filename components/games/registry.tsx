@@ -150,5 +150,10 @@ export const GAME_ENGINES: Record<string, GameEngine> = {
   frogger: {
     Canvas: FroggerCanvas,
     initialState: { score: 0, lives: 3, level: 1, status: "playing" },
+    hasSkins: true,
+    // las 4 direcciones mueven la rana; sin A/B.
+    touchControls: standardTouchControls(
+      new Set(["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"]),
+    ),
   },
 };
