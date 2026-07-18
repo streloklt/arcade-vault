@@ -101,6 +101,25 @@ function makeRiverLanes(): RiverLane[] {
   });
 }
 
+const KEY_DIRECTIONS: Record<string, { dx: number; dy: number }> = {
+  ArrowUp: { dx: 0, dy: -1 },
+  w: { dx: 0, dy: -1 },
+  W: { dx: 0, dy: -1 },
+  ArrowDown: { dx: 0, dy: 1 },
+  s: { dx: 0, dy: 1 },
+  S: { dx: 0, dy: 1 },
+  ArrowLeft: { dx: -1, dy: 0 },
+  a: { dx: -1, dy: 0 },
+  A: { dx: -1, dy: 0 },
+  ArrowRight: { dx: 1, dy: 0 },
+  d: { dx: 1, dy: 0 },
+  D: { dx: 1, dy: 0 },
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function wrapObject(
   obj: { x: number; lengthCells: number },
   dir: 1 | -1,
@@ -156,8 +175,30 @@ export function createFroggerGame(
     });
   }
 
-  function handleKeyDown(_e: KeyboardEvent) {
-    // implementado en el paso 4
+  function frogCell() {
+    return {
+      col: Math.round(frog.x / CELL),
+      row: Math.round(frog.y / CELL),
+    };
+  }
+
+  function moveFrog(dx: number, dy: number) {
+    if (status !== "playing") return;
+    const cell = frogCell();
+    const newCol = clamp(cell.col + dx, 0, COLS - 1);
+    const newRow = clamp(cell.row + dy, 0, ROWS - 1);
+    frog.x = newCol * CELL;
+    frog.y = newRow * CELL;
+    if (newRow < furthestRow) {
+      score += SCORE_FORWARD;
+      furthestRow = newRow;
+    }
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    const dir = KEY_DIRECTIONS[e.key];
+    if (!dir) return;
+    moveFrog(dir.dx, dir.dy);
   }
 
   function advanceLanes(dt: number) {
@@ -176,8 +217,22 @@ export function createFroggerGame(
     }
   }
 
+  function applyRiverDrag(dt: number) {
+    const { row } = frogCell();
+    const lane = riverLanes.find((l) => l.row === row);
+    if (!lane) return;
+    const onPlatform = lane.platforms.some(
+      (p) => frog.x + CELL > p.x && frog.x < p.x + p.lengthCells * CELL,
+    );
+    if (onPlatform) {
+      frog.x += lane.dir * lane.speed * speedMult * dt;
+    }
+  }
+
   function update(dt: number) {
     advanceLanes(dt);
+    applyRiverDrag(dt);
+    emitState();
   }
 
   function drawBoard() {
