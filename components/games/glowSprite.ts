@@ -21,17 +21,23 @@ function renderGlowSprite(
   blur: number,
   color: string,
   draw: (ctx: CanvasRenderingContext2D) => void,
+  centered: boolean,
 ): GlowSprite {
   const margin = Math.ceil(blur * MARGIN_FACTOR);
   const spriteWidth = width + margin * 2;
   const spriteHeight = height + margin * 2;
+  // Anclaje del local (0,0) que usa `draw()`: la esquina superior izquierda del
+  // bounding box (igual que `fillRect(0,0,w,h)`), o su centro (para formas dibujadas
+  // simétricas alrededor del origen, como un asteroide rotado o un círculo).
+  const offsetX = centered ? spriteWidth / 2 : margin;
+  const offsetY = centered ? spriteHeight / 2 : margin;
 
   const canvas = document.createElement("canvas");
   canvas.width = spriteWidth;
   canvas.height = spriteHeight;
 
   const ctx = canvas.getContext("2d")!;
-  ctx.translate(margin, margin);
+  ctx.translate(offsetX, offsetY);
   ctx.shadowBlur = blur;
   ctx.shadowColor = color;
   draw(ctx);
@@ -40,8 +46,8 @@ function renderGlowSprite(
     canvas,
     width: spriteWidth,
     height: spriteHeight,
-    offsetX: margin,
-    offsetY: margin,
+    offsetX,
+    offsetY,
   };
 }
 
@@ -57,33 +63,45 @@ export function getGlowSprite(
   blur: number,
   color: string,
   draw: (ctx: CanvasRenderingContext2D) => void,
+  centered = false,
 ): GlowSprite {
   const cached = keyedCache.get(key);
   if (cached) return cached;
 
-  const sprite = renderGlowSprite(width, height, blur, color, draw);
+  const sprite = renderGlowSprite(width, height, blur, color, draw, centered);
   keyedCache.set(key, sprite);
   return sprite;
 }
 
-const instanceCache = new WeakMap<object, GlowSprite>();
-
 // Formas generadas por instancia (ej. el polígono aleatorio de cada asteroide,
 // generado una sola vez en su constructor): cacheadas por identidad del objeto vía
-// `WeakMap`, liberadas automáticamente por el GC al perder la referencia.
+// `WeakMap`, liberadas automáticamente por el GC al perder la referencia. `variantKey`
+// (color+blur, o skin+color+blur) permite que la misma instancia tenga sprites
+// distintos por skin cacheados en paralelo, para que cambiar de skin en caliente
+// muestre el color correcto sin quedar con el sprite de la skin anterior.
+const instanceCache = new WeakMap<object, Map<string, GlowSprite>>();
+
 export function getInstanceGlowSprite(
   instance: object,
+  variantKey: string,
   width: number,
   height: number,
   blur: number,
   color: string,
   draw: (ctx: CanvasRenderingContext2D) => void,
+  centered = false,
 ): GlowSprite {
-  const cached = instanceCache.get(instance);
+  let variants = instanceCache.get(instance);
+  if (!variants) {
+    variants = new Map();
+    instanceCache.set(instance, variants);
+  }
+
+  const cached = variants.get(variantKey);
   if (cached) return cached;
 
-  const sprite = renderGlowSprite(width, height, blur, color, draw);
-  instanceCache.set(instance, sprite);
+  const sprite = renderGlowSprite(width, height, blur, color, draw, centered);
+  variants.set(variantKey, sprite);
   return sprite;
 }
 
