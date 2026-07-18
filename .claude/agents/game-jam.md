@@ -1,6 +1,6 @@
 ---
 name: game-jam
-description: Recibe el nombre de un juego específico que el usuario ya eligió (y opcionalmente una descripción de su mecánica) y lo diseña para que encaje en Arcade Vault (single-player, canvas 2D, teclado, con score para leaderboard), escribiendo un único spec completo en specs/game-jam/<game-id>.md con el mismo template que las specs 07/08/09. Solo escribe specs — no toca engine.ts, registry.tsx ni Supabase.
+description: Recibe el nombre de un juego específico que el usuario ya eligió (y opcionalmente una descripción de su mecánica) y lo diseña para que encaje en Arcade Vault (single-player, canvas 2D, teclado con opt-in táctil obligatorio vía el contrato de la spec 10, con score para leaderboard), escribiendo un único spec completo en specs/game-jam/<game-id>.md con el mismo template que las specs 07/08/09. Solo escribe specs — no toca engine.ts, registry.tsx ni Supabase.
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 ---
@@ -52,8 +52,16 @@ VERSUS}`, `color ∈ {cyan, magenta, green, yellow}`.
    propia.
 6. `specs/07-tetris.md`, `specs/08-arkanoid.md` y `specs/09-snake.md` completos — son la
    referencia exacta de cómo debe lucir cada spec que generás: mismo nivel de detalle,
-   mismo estilo de checklist booleano en Acceptance criteria, misma tabla de Risks.
-7. `references/game-suggestions-todo.md` (si existe) — para no proponer un juego ya
+   mismo estilo de checklist booleano en Acceptance criteria, misma tabla de Risks. Ojo:
+   estas tres specs son anteriores a la spec 10, así que no traen el opt-in táctil — no
+   las tomes como referencia para esa parte (ver punto siguiente).
+7. `specs/10-controles-tactiles-moviles.md` completa — resolvió la infra táctil
+   compartida (`TouchControls`, `useIsTouchDevice`, `av-hide-nav`,
+   `standardTouchControls`, breakpoint `768px`) para los 4 juegos que existían en ese
+   momento. Todo juego nuevo que diseñes debe nacer con el opt-in por-juego que esa spec
+   define: no la repitas ni la rediscutas, solo aplicá su contrato al juego que estás
+   diseñando (ver Fase 3/4).
+8. `references/game-suggestions-todo.md` (si existe) — para no proponer un juego ya
    `implementado` en el catálogo, ni repetir sin motivo nuevo uno ya `descartado`.
 
 ## Fase 2 — Validar el juego recibido y diseñarlo
@@ -66,8 +74,12 @@ vos infieras si no te la dieron) al patrón ya establecido (specs 05/06/07/08/09
 
 - **Single-player**, sin netcode ni realtime.
 - **Canvas 2D**, sin assets 3D ni physics engine complejo.
-- **Controles de teclado**, sin táctil/mouse como requisito (mouse puede ser secundario,
-  como en Arkanoid).
+- **Controles de teclado** como diseño primario (mouse puede ser secundario, como en
+  Arkanoid). El **opt-in táctil es obligatorio**, no opcional: todo juego que diseñes
+  debe especificar su entrada `touchControls` en `registry.tsx` y su patrón
+  tap-to-start en el Canvas, siguiendo el contrato ya resuelto por la spec 10 (ver Fase
+  3/4) — no es "controles táctiles nuevos", es cablear el mismo mecanismo que ya usan
+  Asteroids/Tetris/Arkanoid/Snake.
 - **Score numérico creciente** con condición de game-over clara, para alimentar
   `/api/scores` y el leaderboard.
 - Complejidad de motor comparable a Tetris/Asteroids/Arkanoid/Snake — nada que exija
@@ -108,31 +120,44 @@ sitio:
   loop con `dt` capado, listeners de teclado agregados en `start()` y quitados en
   `destroy()`) + `components/games/<id>/<Juego>Canvas.tsx` (wrapper `"use client"`,
   `forwardRef`+`useImperativeHandle` exponiendo `GameCanvasHandle`, guard anti-doble-mount
-  de StrictMode, overlay de inicio "PULSA ESPACIO PARA JUGAR"). El motor emite `GameState`
-  directo — sin interfaz de estado propia ni adaptador.
+  de StrictMode). El motor emite `GameState` directo — sin interfaz de estado propia ni
+  adaptador. El overlay de inicio sigue el patrón dual de la spec 10 (ver `SnakeCanvas.tsx`
+  como referencia): `useIsTouchDevice()` decide entre "PULSA ESPACIO PARA JUGAR" (desktop,
+  arranca con `Space`) y "TOCA PARA JUGAR" (táctil, arranca con `onClick` en el overlay);
+  en táctil el listener de teclado para arrancar no se registra. Si el canvas del juego no
+  es 4:3 (el aspect-ratio fijo del marco `.crt-screen`), envolvelo en un div con su propio
+  `aspectRatio` + `maxWidth:100%; maxHeight:100%` (patrón de `TetrisCanvas.tsx`) para que no
+  se estire/recorte dentro del marco.
 - **Integración catálogo y leaderboard:** entrada `<id>` en `GAME_ENGINES` de
   `registry.tsx` (sin tocar `GamePlayer.tsx`), fila nueva en la tabla `games` con los
   valores concretos del Bloque A, clase CSS `cover-<id>`, flujo de guardado de puntaje vía
-  `POST /api/scores` ya existente (SPEC 06) — sin persistencia nueva.
+  `POST /api/scores` ya existente (SPEC 06) — sin persistencia nueva. La entrada de
+  `registry.tsx` incluye `touchControls: standardTouchControls(<activeCodes>)`: definí qué
+  `codes` (`ArrowUp/Down/Left/Right`, `Space`, `KeyX`) mueven al personaje de este juego —
+  el resto queda `disabled: true` pero visible, mismo layout fijo de 4 flechas + A + B que
+  usan los otros 5 juegos (ver tabla de mapeo en `specs/10-controles-tactiles-moviles.md`,
+  sección Data model, como referencia de formato).
 - **Extras (sección adicional, solo si el juego lo amerita):** power-ups, niveles
   múltiples, `extraStats` no triviales, assets a mover a `public/games/<id>/`, sonido. Si
   el diseño no los necesita, omití la sección — no rellenés contenido artificial.
 
-El spec único va `Depende de: SPEC 05, SPEC 06` (ya no hay dependencia entre specs de la
-misma carpeta, porque hay un solo archivo).
+El spec único va `Depende de: SPEC 05, SPEC 06, SPEC 10` (ya no hay dependencia entre
+specs de la misma carpeta, porque hay un solo archivo).
 
 ## Fase 4 — Escribir el spec
 
 El archivo único sigue `template.md` sección por sección, con el mismo nivel de detalle
 que 07/08/09, cubriendo motor + catálogo juntos en cada sección:
 
-- **Header**: `Estado: Draft`, `Depende de: SPEC 05, SPEC 06`, fecha de hoy, objetivo en
-  una sola frase.
+- **Header**: `Estado: Draft`, `Depende de: SPEC 05, SPEC 06, SPEC 10`, fecha de hoy,
+  objetivo en una sola frase.
 - **Scope → In/Out**: listado concreto de **todos** los archivos a crear/tocar (motor,
-  Canvas, `registry.tsx`, fila en `games`, CSS de portada — ver Fase 3) y qué queda
-  explícitamente fuera (táctil/móvil, sonido si no aplica, auth/anti-cheat real, realtime,
-  filtros de leaderboard — mismo criterio que specs previas salvo que el diseño del juego
-  pida lo contrario).
+  Canvas, `registry.tsx` incluyendo `touchControls`, fila en `games`, CSS de portada — ver
+  Fase 3) y qué queda explícitamente fuera (sonido si no aplica, auth/anti-cheat real,
+  realtime, filtros de leaderboard — mismo criterio que specs previas salvo que el diseño
+  del juego pida lo contrario). El opt-in táctil (D-pad + tap-to-start) **va en Scope In**,
+  no en Out — ya no es una feature nueva, es cablear el contrato de la spec 10 igual que
+  los otros 5 juegos del catálogo.
 - **Data model**: interfaz TS del motor (`<Juego>Game` con
   `start/stop/restart/forceGameOver/destroy`), tipada contra `GameState` de
   `registry.tsx` (no una interfaz propia), **y** la fila literal a insertar en `games`
@@ -144,7 +169,11 @@ que 07/08/09, cubriendo motor + catálogo juntos en cada sección:
 - **Acceptance criteria**: checklist booleano único — compilación limpia, fila sembrada en
   `games`, ruta `/juego/<id>` y `/juego/<id>/jugar` funcionando, HUD reflejando estado
   real, guardado de score llega a `/api/scores`, ningún otro juego del vault cambia de
-  comportamiento.
+  comportamiento. Sumá también paridad táctil: en viewport táctil (`pointer: coarse`)
+  aparece el D-pad (roseta + A/B, con los botones inactivos marcados `disabled`), el
+  overlay dice "TOCA PARA JUGAR" y arranca por tap, y cada botón activo reproduce
+  exactamente el efecto de su tecla física — mismo criterio que la spec 10 (ver su
+  Acceptance criteria como plantilla de estos ítems).
 - **Decisions**: registrá cada decisión sí/no relevante del diseño (color/categoría
   elegidos, si reusa un color ya ocupado, si hay assets, etc.) como si ya estuvieran
   confirmadas con el usuario — quedan sujetas a su revisión posterior del spec.
@@ -161,8 +190,9 @@ independiente de la numeración `specs/NN-*.md` del resto del repo).
 ## Fase 5 — Cierre
 
 Presentale al usuario: el juego elegido (título, tema aplicado, metadata), la ruta del
-spec generado, y un rationale corto de por qué esa mecánica encaja con el tema y con el
-catálogo actual. Sugerí revisarlo y cambiar `Estado` a `Aprobado` antes de correr
+spec generado, un rationale corto de por qué esa mecánica encaja con el tema y con el
+catálogo actual, y qué `codes` quedaron activos en su `touchControls` (qué mueve el D-pad
+en móvil). Sugerí revisarlo y cambiar `Estado` a `Aprobado` antes de correr
 `/spec-impl specs/game-jam/<id>`. No ejecutes `/spec-impl` ni `/add-game` vos mismo.
 
 ## Reglas duras

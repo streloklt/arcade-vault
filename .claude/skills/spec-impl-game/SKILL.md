@@ -62,8 +62,14 @@ Solo si la Fase A terminó completa:
 4. **Lanzar `mobile-porter` después, nunca antes ni junto con `skin-designer`.** Usá la
    herramienta Agent con `subagent_type: mobile-porter`, indicándole que la zona a
    revisar en esta corrida es **"detalle de juego"** (`/juego/<id>`) del juego recién
-   implementado — no el sitio completo, no el reproductor (ya resuelto por la spec 10),
-   solo esa zona. También `run_in_background: false`.
+   implementado — no el sitio completo, solo esa zona. Pedile explícitamente que, como
+   parte de esa corrida, verifique también la **paridad táctil del reproductor**
+   (`/juego/<id>/jugar`) de este juego puntual — no la infra compartida de la spec 10
+   (`TouchControls`, `useIsTouchDevice`, `av-hide-nav`, ya resuelta y fuera de su
+   alcance), sino el opt-in por-juego: que la entrada `<id>` en `registry.tsx` tenga
+   `touchControls`, y que su `<Juego>Canvas.tsx` arranque por tap en viewport táctil. Si
+   falta, que lo cablee siguiendo el patrón ya establecido (ver su propio charter). También
+   `run_in_background: false`.
 
 5. **Regla dura, sin excepciones:** jamás invoques ambos agentes en el mismo mensaje ni
    en paralelo. `mobile-porter` solo arranca una vez que `skin-designer` devolvió su
@@ -71,7 +77,8 @@ Solo si la Fase A terminó completa:
 
 6. **Cierre.** Informá al usuario, en un solo resumen: spec implementada (branch,
    archivos tocados), skins aplicados al juego, ajustes de responsive aplicados al
-   detalle del juego, y el recordatorio pendiente de `/spec-impl`: verificar los
+   detalle del juego, si se verificó (o tuvo que cablearse) la paridad táctil del
+   reproductor, y el recordatorio pendiente de `/spec-impl`: verificar los
    criterios de aceptación uno por uno y, si todos pasan, actualizar el `Status` de la
    spec a "Implemented" (o el equivalente en el idioma del repo) antes de mergear el
    branch.

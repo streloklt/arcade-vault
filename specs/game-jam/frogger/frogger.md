@@ -1,7 +1,7 @@
 # SPEC — Frogger: motor e integración al vault
 
 > **Estado:** Aprobado
-> **Depende de:** SPEC 05, SPEC 06
+> **Depende de:** SPEC 05, SPEC 06, SPEC 10
 > **Fecha:** 2026-07-18
 > **Objetivo:** Diseñar el motor TypeScript de Frogger (`components/games/frogger/engine.ts` + `FroggerCanvas.tsx`) con movimiento en grid por carriles, tráfico, río con plataformas, vidas, timer y score, e integrarlo al vault agregando la entrada `frogger` a `GAME_ENGINES`, renombrando el mock `ranaria` a `frogger` en la tabla `games` y reusando la portada `cover-rana`, sin persistencia nueva ni cambios en `GamePlayer.tsx`.
 
@@ -37,19 +37,19 @@ Este documento unifica en un solo spec autocontenido lo que originalmente estaba
 - `onStateChange` se llama al final de cada `update(dt)` con la forma `GameState` de `components/games/registry.tsx`: `score`, `lives`, `level`, `status` (subconjunto `"playing" | "gameover"`), y `extraStats: [{ label: "Metas", value: "X/5" }, { label: "Tiempo", value: "Ns" }]`.
 - Loop con `requestAnimationFrame` + acumulador de `dt` capado, para que el movimiento de vehículos, plataformas y el timer sean independientes del refresh rate del dispositivo. El movimiento de la rana es por evento de teclado (discreto), no por acumulador.
 - Listeners de teclado agregados en `start()` y removidos en `destroy()`, nunca a nivel de módulo. Controles: `↑`/`↓`/`←`/`→` **y** `W`/`S`/`A`/`D` simultáneamente activos para mover la rana una celda por pulsación.
-- `components/games/frogger/FroggerCanvas.tsx`: wrapper `"use client"` con `forwardRef` + `useImperativeHandle` exponiendo `{ pause, resume, restart, forceGameOver }` (tipo `GameCanvasHandle`), guard anti-doble-mount de StrictMode (ref booleana), overlay inicial "FROGGER · PULSA ESPACIO PARA JUGAR" antes de arrancar el loop. Renderiza `<canvas width={600} height={520}>`.
+- `components/games/frogger/FroggerCanvas.tsx`: wrapper `"use client"` con `forwardRef` + `useImperativeHandle` exponiendo `{ pause, resume, restart, forceGameOver }` (tipo `GameCanvasHandle`), guard anti-doble-mount de StrictMode (ref booleana). Overlay inicial dual (patrón spec 10, vía `useIsTouchDevice`): "FROGGER · PULSA ESPACIO PARA JUGAR" en desktop (arranca con `Space`) o "FROGGER · TOCA PARA JUGAR" en táctil (arranca con `onClick`, sin listener de teclado). Renderiza `<canvas width={600} height={520}>` envuelto en un div con `aspectRatio: "600 / 520"` + `maxWidth/maxHeight: 100%` (patrón `TetrisCanvas.tsx`) para no deformarse dentro del marco `.crt-screen` (4:3).
 - Dibujo puro en canvas con formas de color sólido (sin assets externos): agua azul, pasto verde para medianas/inicio, asfalto oscuro para la autopista, rana como cuadrado verde claro, vehículos como rectángulos de colores por carril, troncos como rectángulos marrones, tortugas como óvalos verdes, nenúfares vacíos como círculos tenues y ocupados con una rana pequeña encima.
 
 ### Integración al catálogo y leaderboard
 
-- Agregar la entrada `frogger` al mapa `GAME_ENGINES` en `components/games/registry.tsx`: `Canvas: FroggerCanvas, initialState: { score: 0, lives: 3, level: 1, status: "playing" }`, con el import de `FroggerCanvas` desde `components/games/frogger/FroggerCanvas`. Sin adaptador, porque `FroggerCanvas` ya emite `GameState` directo. No se toca `GamePlayer.tsx`.
+- Agregar la entrada `frogger` al mapa `GAME_ENGINES` en `components/games/registry.tsx`: `Canvas: FroggerCanvas, initialState: { score: 0, lives: 3, level: 1, status: "playing" }, touchControls: standardTouchControls(new Set(["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"]))` (las 4 flechas mueven a la rana; sin A/B), con el import de `FroggerCanvas` desde `components/games/frogger/FroggerCanvas`. Sin adaptador, porque `FroggerCanvas` ya emite `GameState` directo. No se toca `GamePlayer.tsx`.
 - Renombrar la fila mock `ranaria` en la tabla `games` de Supabase (vía `mcp__supabase__apply_migration` o `execute_sql`): `UPDATE games SET id = 'frogger', title = 'FROGGER', short = ..., long = ... WHERE id = 'ranaria'`, conservando `cat = 'ARCADE'`, `color = 'green'` y `cover = 'cover-rana'` tal cual están hoy. Esto cambia la ruta real del juego de `/juego/ranaria/...` a `/juego/frogger/...`.
 - Reusar la clase CSS `cover-rana` ya existente en `app/arcade.css` como portada de la tarjeta — no se crea una clase `cover-frogger` nueva, porque `cover-rana` ya representa una rana cruzando carriles.
 - Guardado de puntaje vía el flujo existente `POST /api/scores` (SPEC 06), con `game_id: "frogger"` — sin persistencia nueva ni cambios en `lib/games.ts`, `lib/scores.ts` ni `app/api/scores/route.ts`.
 
 **Out of scope (para specs futuros):**
 
-- Controles táctiles/móviles y control por mouse.
+- Control por mouse (los controles táctiles/móviles sí están en Scope In — ver arriba: opt-in de la spec 10 vía `touchControls` + overlay dual, cableado post-implementación).
 - Sonido/música (no hay assets de audio; el diseño es solo-canvas).
 - Tortugas que se sumergen periódicamente (dive turtles del arcade original) — en este spec las tortugas son plataformas siempre sólidas, igual que los troncos.
 - Cocodrilos, serpientes, moscas-bonus u otros enemigos/objetos del río además de troncos y tortugas.
@@ -157,7 +157,7 @@ WHERE id = 'ranaria';
 3. Implementar la configuración inicial de carriles (`RoadLane[]` y `RiverLane[]`) con velocidades, sentidos alternados por carril y posiciones iniciales espaciadas de vehículos/plataformas, más su avance en `update(dt)` con wrap horizontal, y su dibujo. Verificación: al arrancar el loop, vehículos y plataformas se desplazan de forma continua y reaparecen por el borde opuesto.
 4. Implementar el movimiento discreto de la rana por teclado (flechas + WASD, una celda por pulsación, límites de tablero), el arrastre de la rana por la plataforma del río donde esté parada, y el score de avance hacia adelante (+10 por fila nueva más cercana a la meta). Listeners agregados en `start()`, removidos en `destroy()`. Verificación: la rana salta celda por celda, es arrastrada por los troncos, y el score sube al avanzar.
 5. Implementar las condiciones de muerte (atropello por AABB en autopista, ahogo si no hay plataforma bajo la rana en el río, arrastre fuera de pantalla, nenúfar ocupado/inválido, timeout del contador de 30s), el consumo de vidas con reaparición en el inicio, el ocupado de nenúfares con su score (+50 y bonus de tiempo), el completar nivel (+1000, vaciar nenúfares, escalar velocidades) y el `gameover` al perder la 3ª vida. Llamar `onStateChange` con `GameState` (`extraStats` de Metas y Tiempo) al final de cada `update`. Verificación: `npm run build` compila; las muertes descuentan vidas y el HUD refleja Metas/Tiempo.
-6. Crear `components/games/frogger/FroggerCanvas.tsx` (`"use client"`): `<canvas width={600} height={520}>`, instancia `createFroggerGame` en un `useEffect` con guard de un solo mount (ref booleana), lo destruye en cleanup. Overlay "FROGGER · PULSA ESPACIO PARA JUGAR" hasta que se presiona Espacio, momento en que se oculta y se llama `game.start()`. Expone `{ pause, resume, restart, forceGameOver }` vía `useImperativeHandle`/`forwardRef` y recibe `onStateChange: (state: GameState) => void` como prop. Verificación: `npm run build` compila; el componente no se usa todavía en ninguna página.
+6. Crear `components/games/frogger/FroggerCanvas.tsx` (`"use client"`): `<canvas width={600} height={520}>`, instancia `createFroggerGame` en un `useEffect` con guard de un solo mount (ref booleana), lo destruye en cleanup. Overlay "FROGGER · PULSA ESPACIO PARA JUGAR" hasta que se presiona Espacio, momento en que se oculta y se llama `game.start()`. Expone `{ pause, resume, restart, forceGameOver }` vía `useImperativeHandle`/`forwardRef` y recibe `onStateChange: (state: GameState) => void` como prop. Verificación: `npm run build` compila; el componente no se usa todavía en ninguna página. _(Nota post-implementación: este paso original no incluyó el opt-in táctil de la spec 10 — se agregó en una corrida posterior, ver Decisions y Acceptance criteria; el paso queda documentado tal como se ejecutó originalmente.)_
 7. Renombrar la fila mock en Supabase vía `mcp__supabase__apply_migration`: `UPDATE games SET id='frogger', title='FROGGER', short=..., long=... WHERE id='ranaria'` (cat/color/cover sin cambios). Verificación: `execute_sql` con `select * from games where id='frogger'` devuelve la fila actualizada con `cover='cover-rana'`, `color='green'`, `cat='ARCADE'`; `select * from games where id='ranaria'` no devuelve filas.
 8. Modificar `components/games/registry.tsx`: agregar el import de `FroggerCanvas` y la entrada `frogger: { Canvas: FroggerCanvas, initialState: { score: 0, lives: 3, level: 1, status: "playing" } }` al mapa `GAME_ENGINES`. No se toca `GamePlayer.tsx`. Verificación: `npm run build` compila; `npm run dev`, navegar a `/juego/frogger` y `/juego/frogger/jugar` sin errores 404.
 9. Verificar que la tarjeta de Frogger en `/biblioteca` muestra la portada `cover-rana` (ya existente en `app/arcade.css`) y no el placeholder genérico. No requiere cambios de CSS. Verificación visual: la tarjeta muestra la portada de la rana cruzando carriles.
@@ -168,7 +168,9 @@ WHERE id = 'ranaria';
 - [ ] `npm run build` compila sin errores de TypeScript ni de ESLint.
 - [ ] `npm run lint` no reporta errores nuevos.
 - [ ] `components/games/frogger/engine.ts` exporta `createFroggerGame(canvas, onStateChange)` sin variables globales de módulo, con listeners de teclado agregados en `start()` y removidos en `destroy()`.
-- [ ] `components/games/frogger/FroggerCanvas.tsx` muestra el overlay "FROGGER · PULSA ESPACIO PARA JUGAR" al montar y no arranca el loop hasta presionar Espacio.
+- [ ] `components/games/frogger/FroggerCanvas.tsx` muestra el overlay "FROGGER · PULSA ESPACIO PARA JUGAR" al montar en desktop y no arranca el loop hasta presionar Espacio; en viewport táctil (`pointer: coarse`) muestra "FROGGER · TOCA PARA JUGAR" y arranca al tocar el overlay, sin depender de `Space`.
+- [ ] `components/games/registry.tsx` tiene `touchControls: standardTouchControls(...)` en la entrada `frogger`; en viewport táctil, `GamePlayer` muestra el D-pad (4 flechas activas, A/B `disabled`) debajo del `.crt` y cada flecha mueve a la rana igual que su tecla física.
+- [ ] El canvas de Frogger (600×520) no se deforma dentro del marco `.crt-screen` (4:3): se ve completo, sin recorte vertical ni estiramiento, en cualquier viewport.
 - [ ] La rana se mueve exactamente una celda por pulsación con flechas y con WASD, sin salir de las columnas 0–14 ni bajar de la fila 12.
 - [ ] Un vehículo que solapa la celda de la rana en la autopista descuenta una vida y reaparece la rana en la celda de inicio.
 - [ ] Estar en una fila de río sin una plataforma bajo la rana descuenta una vida (ahogo); estar sobre un tronco/tortuga arrastra la rana con la plataforma.
@@ -202,7 +204,8 @@ WHERE id = 'ranaria';
 - **Sí:** controles flechas + WASD simultáneos, igual que Snake. Confirmado con el usuario.
 - **No:** tortugas que se sumergen, cocodrilos, serpientes o moscas-bonus del arcade original — quedan fuera para mantener la complejidad del motor comparable a Tetris/Arkanoid/Snake. Se documenta como scope-out.
 - **No:** assets externos (spritesheets/audio) — todo se dibuja con formas de color sólido en canvas, como Tetris y la serpiente de Snake. Evita carga asíncrona y mantiene el motor autocontenido.
-- **No:** sonido, controles táctiles/mouse, auth/anti-cheat real, realtime. Mismo criterio que specs 05/06/07/08/09.
+- **Sí:** paridad táctil vía el opt-in de la spec 10 (`touchControls` en `registry.tsx` + overlay dual `useIsTouchDevice`/tap-to-start) — cableado post-implementación para que Frogger quede jugable en móvil igual que los otros 5 juegos del catálogo.
+- **No:** sonido, control por mouse, auth/anti-cheat real, realtime. Mismo criterio que specs 05/06/07/08/09.
 - **Sí:** renombrar `ranaria` → `frogger` (`UPDATE`, no `INSERT` nuevo), conservando `cat`/`color`/`cover`. Confirmado con el usuario — mismo patrón que specs 07 (`caida`→`tetris`) y 08 (`bloque-buster`→`arkanoid`); evita una fila mock huérfana y el mock `ranaria` ya describe exactamente a Frogger.
 - **Sí:** `title` pasa a "FROGGER" (nombre real) y `short`/`long` se reescriben para describir la mecánica confirmada por el usuario (autopista + río + nenúfares + timer).
 - **No:** cambiar `cat`, `color` o `cover` — se mantienen `ARCADE`/`green`/`cover-rana` del mock actual. `cover-rana` ya es una rana cruzando carriles, así que no hace falta una portada nueva.
@@ -224,7 +227,7 @@ WHERE id = 'ranaria';
 ## What is **not** in this spec
 
 - Tortugas que se sumergen, cocodrilos, serpientes o moscas-bonus.
-- Sonido/música, controles táctiles/mouse.
+- Sonido/música, control por mouse.
 - Sprites animados de la rana.
 - Un estado `"dead"` intermedio distinto de `"playing"`/`"gameover"`.
 - Una clase `cover-frogger` nueva o el rediseño de `cover-rana`.
