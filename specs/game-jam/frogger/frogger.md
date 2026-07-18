@@ -1,17 +1,23 @@
-# SPEC — Motor y jugabilidad de Frogger
+# SPEC — Frogger: motor e integración al vault
 
-> **Estado:** Draft
+> **Estado:** Aprobado
 > **Depende de:** SPEC 05, SPEC 06
-> **Fecha:** 2026-07-17
-> **Objetivo:** Diseñar el motor TypeScript de Frogger (`components/games/frogger/engine.ts` + `FroggerCanvas.tsx`) que emite `GameState` directo al registro de juegos, con movimiento en grid por carriles, tráfico, río con plataformas, vidas, timer y score, siguiendo el patrón de motor de Tetris/Arkanoid/Snake.
+> **Fecha:** 2026-07-18
+> **Objetivo:** Diseñar el motor TypeScript de Frogger (`components/games/frogger/engine.ts` + `FroggerCanvas.tsx`) con movimiento en grid por carriles, tráfico, río con plataformas, vidas, timer y score, e integrarlo al vault agregando la entrada `frogger` a `GAME_ENGINES`, renombrando el mock `ranaria` a `frogger` en la tabla `games` y reusando la portada `cover-rana`, sin persistencia nueva ni cambios en `GamePlayer.tsx`.
 
 ## Section 1 — Por qué este spec existe
 
-Frogger no viene de `references/started-games/` — no hay un `game.js` a portar. Se diseña desde cero a partir de la mecánica que dio el usuario (movimiento en grid por carriles, esquivar tráfico y cruzar troncos/plataformas en un río, sin caer al agua ni ser atropellado, score por avance hacia la meta) más el conocimiento del Frogger clásico. Este spec fija el contrato del motor y la jugabilidad; el spec `02-frogger-catalogo.md` cubre la integración con el registro, el catálogo Supabase y el leaderboard. Cada uno es aprobable por separado.
+Frogger no viene de `references/started-games/` — no hay un `game.js` a portar. Se diseña desde cero a partir de la mecánica que dio el usuario (movimiento en grid por carriles, esquivar tráfico y cruzar troncos/plataformas en un río, sin caer al agua ni ser atropellado, score por avance hacia la meta) más el conocimiento del Frogger clásico.
+
+El mock `ranaria` (sembrado en la tabla `games` por SPEC 06, con `title = 'RANARIA'`, `cover = 'cover-rana'`, `cat = 'ARCADE'`, `color = 'green'` y un `long` que describe cruzar carriles de coches y troncos en un río) es ya un placeholder de Frogger sin motor real. Este spec lo convierte en jugable siguiendo el patrón exacto de renombrado usado por Tetris (`caida` → `tetris`, SPEC 07) y Arkanoid (`bloque-buster` → `arkanoid`, SPEC 08): un `UPDATE` de la fila mock conservando `cat`/`color`/`cover`, más una entrada nueva en `GAME_ENGINES`.
+
+Este documento unifica en un solo spec autocontenido lo que originalmente estaba dividido en `01-frogger-motor.md` (jugabilidad y contrato del motor) y `02-frogger-catalogo.md` (integración con el registro, catálogo Supabase y leaderboard), siguiendo el mismo formato de archivo único que ya usan `07-tetris.md`, `08-arkanoid.md` y `09-snake.md`.
 
 ## Scope
 
 **In:**
+
+### Motor y jugabilidad
 
 - `components/games/frogger/engine.ts`: factory `createFroggerGame(canvas, onStateChange)` que devuelve `FroggerGame` (`start/stop/restart/forceGameOver/destroy`). Todo el estado (posición de la rana en píxeles, fila más avanzada alcanzada en el viaje actual, configuración y posiciones de vehículos por carril, plataformas del río por carril, slots de meta ocupados, score, vidas, nivel, timer restante) vive en closures dentro de la factory, sin variables globales de módulo.
 - Grid de juego: celda de 40px, 15 columnas × 13 filas, canvas de 600×520px. Origen arriba-izquierda. Distribución de filas (de arriba hacia abajo):
@@ -34,20 +40,30 @@ Frogger no viene de `references/started-games/` — no hay un `game.js` a portar
 - `components/games/frogger/FroggerCanvas.tsx`: wrapper `"use client"` con `forwardRef` + `useImperativeHandle` exponiendo `{ pause, resume, restart, forceGameOver }` (tipo `GameCanvasHandle`), guard anti-doble-mount de StrictMode (ref booleana), overlay inicial "FROGGER · PULSA ESPACIO PARA JUGAR" antes de arrancar el loop. Renderiza `<canvas width={600} height={520}>`.
 - Dibujo puro en canvas con formas de color sólido (sin assets externos): agua azul, pasto verde para medianas/inicio, asfalto oscuro para la autopista, rana como cuadrado verde claro, vehículos como rectángulos de colores por carril, troncos como rectángulos marrones, tortugas como óvalos verdes, nenúfares vacíos como círculos tenues y ocupados con una rana pequeña encima.
 
+### Integración al catálogo y leaderboard
+
+- Agregar la entrada `frogger` al mapa `GAME_ENGINES` en `components/games/registry.tsx`: `Canvas: FroggerCanvas, initialState: { score: 0, lives: 3, level: 1, status: "playing" }`, con el import de `FroggerCanvas` desde `components/games/frogger/FroggerCanvas`. Sin adaptador, porque `FroggerCanvas` ya emite `GameState` directo. No se toca `GamePlayer.tsx`.
+- Renombrar la fila mock `ranaria` en la tabla `games` de Supabase (vía `mcp__supabase__apply_migration` o `execute_sql`): `UPDATE games SET id = 'frogger', title = 'FROGGER', short = ..., long = ... WHERE id = 'ranaria'`, conservando `cat = 'ARCADE'`, `color = 'green'` y `cover = 'cover-rana'` tal cual están hoy. Esto cambia la ruta real del juego de `/juego/ranaria/...` a `/juego/frogger/...`.
+- Reusar la clase CSS `cover-rana` ya existente en `app/arcade.css` como portada de la tarjeta — no se crea una clase `cover-frogger` nueva, porque `cover-rana` ya representa una rana cruzando carriles.
+- Guardado de puntaje vía el flujo existente `POST /api/scores` (SPEC 06), con `game_id: "frogger"` — sin persistencia nueva ni cambios en `lib/games.ts`, `lib/scores.ts` ni `app/api/scores/route.ts`.
+
 **Out of scope (para specs futuros):**
 
-- Integración con el registro `GAME_ENGINES`, la fila en la tabla `games`, la portada del catálogo y el guardado de score — todo eso vive en `02-frogger-catalogo.md`.
 - Controles táctiles/móviles y control por mouse.
 - Sonido/música (no hay assets de audio; el diseño es solo-canvas).
 - Tortugas que se sumergen periódicamente (dive turtles del arcade original) — en este spec las tortugas son plataformas siempre sólidas, igual que los troncos.
 - Cocodrilos, serpientes, moscas-bonus u otros enemigos/objetos del río además de troncos y tortugas.
 - Un estado intermedio `"dead"` distinto de `"playing"`/`"gameover"` — perder una vida con vidas restantes no interrumpe `"playing"`.
 - Animación de sprite de la rana (saltos, muerte) más allá del redibujado por frame de formas sólidas.
+- Cualquier cambio a otros juegos del vault (`serpentina`, `gloton`, `invasores`, `asteroids`, `duelo-pixel`, `tetris`, `arkanoid`, `snake`) — siguen sin modificaciones.
+- Crear una clase `cover-frogger` nueva o rediseñar `cover-rana`.
+- Redirección desde la ruta antigua `/juego/ranaria/...` — sin tráfico real en producción, mismo criterio que specs 05/07/08.
+- Cambios al copy/metadata de la fila más allá de `id`/`title`/`short`/`long` — `cat`/`color`/`cover` quedan igual.
 - Auth/anti-cheat real, realtime, filtros de leaderboard.
 
 ## Data model
 
-Esta feature no introduce persistencia nueva. Define el contrato TypeScript entre el motor y React, tipado contra `GameState` de `components/games/registry.tsx` (no una interfaz de estado propia):
+Esta feature no introduce persistencia nueva (reutiliza `games`/`scores` de SPEC 06 vía `/api/scores`). Define el contrato TypeScript entre el motor y React, tipado contra `GameState` de `components/games/registry.tsx` (no una interfaz de estado propia):
 
 ```ts
 // components/games/frogger/engine.ts
@@ -122,6 +138,18 @@ Convenciones:
 - La rana guarda su posición en píxeles; su celda lógica es `round(x / CELL)`, `round(y / CELL)`.
 - El wrap horizontal de vehículos/plataformas reintroduce el objeto por el borde opuesto al salir completamente de pantalla.
 
+Fila actualizada en `games` (valores concretos, no placeholders):
+
+```sql
+UPDATE games
+SET id = 'frogger',
+    title = 'FROGGER',
+    short = 'Cruza la autopista y el río hasta las metas.',
+    long = 'Guia a la rana a traves de una autopista de vehiculos y un rio de troncos y tortugas hasta ocupar los 5 nenufares. Esquiva el trafico, no caigas al agua y llega antes de que se acabe el tiempo.'
+WHERE id = 'ranaria';
+-- cat = 'ARCADE', color = 'green', cover = 'cover-rana' quedan sin cambios.
+```
+
 ## Implementation plan
 
 1. Crear `components/games/frogger/engine.ts` con el esqueleto de `createFroggerGame(canvas, onStateChange)`: constantes de layout/balance, estado en closures (rana, carriles, nenúfares, score, vidas, nivel, timer, `animId`), y funciones vacías `start/stop/restart/forceGameOver/destroy`. Verificación: `npm run build` compila; el archivo no se importa desde ningún lado todavía.
@@ -129,8 +157,11 @@ Convenciones:
 3. Implementar la configuración inicial de carriles (`RoadLane[]` y `RiverLane[]`) con velocidades, sentidos alternados por carril y posiciones iniciales espaciadas de vehículos/plataformas, más su avance en `update(dt)` con wrap horizontal, y su dibujo. Verificación: al arrancar el loop, vehículos y plataformas se desplazan de forma continua y reaparecen por el borde opuesto.
 4. Implementar el movimiento discreto de la rana por teclado (flechas + WASD, una celda por pulsación, límites de tablero), el arrastre de la rana por la plataforma del río donde esté parada, y el score de avance hacia adelante (+10 por fila nueva más cercana a la meta). Listeners agregados en `start()`, removidos en `destroy()`. Verificación: la rana salta celda por celda, es arrastrada por los troncos, y el score sube al avanzar.
 5. Implementar las condiciones de muerte (atropello por AABB en autopista, ahogo si no hay plataforma bajo la rana en el río, arrastre fuera de pantalla, nenúfar ocupado/inválido, timeout del contador de 30s), el consumo de vidas con reaparición en el inicio, el ocupado de nenúfares con su score (+50 y bonus de tiempo), el completar nivel (+1000, vaciar nenúfares, escalar velocidades) y el `gameover` al perder la 3ª vida. Llamar `onStateChange` con `GameState` (`extraStats` de Metas y Tiempo) al final de cada `update`. Verificación: `npm run build` compila; las muertes descuentan vidas y el HUD refleja Metas/Tiempo.
-6. Crear `components/games/frogger/FroggerCanvas.tsx` (`"use client"`): `<canvas width={600} height={520}>`, instancia `createFroggerGame` en un `useEffect` con guard de un solo mount (ref booleana), lo destruye en cleanup. Overlay "FROGGER · PULSA ESPACIO PARA JUGAR" hasta que se presiona Espacio, momento en que se oculta y se llama `game.start()`. Expone `{ pause, resume, restart, forceGameOver }` vía `useImperativeHandle`/`forwardRef` y recibe `onStateChange: (state: GameState) => void` como prop. Verificación: `npm run build` compila; el componente no se usa todavía en ninguna página (su registro va en `02-frogger-catalogo.md`).
-7. Recorrido manual del motor de forma aislada (montando `FroggerCanvas` en una página de prueba temporal o esperando al recorrido end-to-end de `02-frogger-catalogo.md`): overlay inicial → Espacio arranca → mover la rana con flechas y WASD → cruzar la autopista esquivando vehículos → subir a un tronco y ser arrastrado → llegar a un nenúfar (score +50 + bonus) → ocupar los 5 y ver subir el nivel y acelerar los carriles → morir por atropello, por ahogo, por arrastre fuera de pantalla y por timeout, confirmando que cada uno descuenta una vida → perder las 3 vidas y confirmar `status: "gameover"`. Verificación: `npm run build` y `npm run lint` sin errores; recorrido sin errores en consola.
+6. Crear `components/games/frogger/FroggerCanvas.tsx` (`"use client"`): `<canvas width={600} height={520}>`, instancia `createFroggerGame` en un `useEffect` con guard de un solo mount (ref booleana), lo destruye en cleanup. Overlay "FROGGER · PULSA ESPACIO PARA JUGAR" hasta que se presiona Espacio, momento en que se oculta y se llama `game.start()`. Expone `{ pause, resume, restart, forceGameOver }` vía `useImperativeHandle`/`forwardRef` y recibe `onStateChange: (state: GameState) => void` como prop. Verificación: `npm run build` compila; el componente no se usa todavía en ninguna página.
+7. Renombrar la fila mock en Supabase vía `mcp__supabase__apply_migration`: `UPDATE games SET id='frogger', title='FROGGER', short=..., long=... WHERE id='ranaria'` (cat/color/cover sin cambios). Verificación: `execute_sql` con `select * from games where id='frogger'` devuelve la fila actualizada con `cover='cover-rana'`, `color='green'`, `cat='ARCADE'`; `select * from games where id='ranaria'` no devuelve filas.
+8. Modificar `components/games/registry.tsx`: agregar el import de `FroggerCanvas` y la entrada `frogger: { Canvas: FroggerCanvas, initialState: { score: 0, lives: 3, level: 1, status: "playing" } }` al mapa `GAME_ENGINES`. No se toca `GamePlayer.tsx`. Verificación: `npm run build` compila; `npm run dev`, navegar a `/juego/frogger` y `/juego/frogger/jugar` sin errores 404.
+9. Verificar que la tarjeta de Frogger en `/biblioteca` muestra la portada `cover-rana` (ya existente en `app/arcade.css`) y no el placeholder genérico. No requiere cambios de CSS. Verificación visual: la tarjeta muestra la portada de la rana cruzando carriles.
+10. Recorrido end-to-end manual: overlay inicial → Espacio arranca → mover la rana con flechas y WASD → cruzar la autopista esquivando vehículos → subir a un tronco y ser arrastrado → llegar a un nenúfar (score +50 + bonus) → ocupar los 5 y ver subir el nivel y acelerar los carriles → morir por atropello, por ahogo, por arrastre fuera de pantalla y por timeout, confirmando que cada uno descuenta una vida → perder las 3 vidas y confirmar `status: "gameover"` y que se abre el modal "FIN DEL JUEGO" con el score real → guardar puntuación (llega a `POST /api/scores` con `game_id: "frogger"`, la fila aparece en `scores`) → "JUGAR DE NUEVO" reinicia limpio y vuelve a mostrar el overlay de inicio. Probar también PAUSA (congela el loop) y FIN (fuerza el modal). Verificación: `npm run build` y `npm run lint` sin errores; recorrido completo sin errores en consola.
 
 ## Acceptance criteria
 
@@ -150,7 +181,15 @@ Convenciones:
 - [ ] Perder la 3ª vida fija `status: "gameover"`.
 - [ ] El HUD refleja `score`, `lives`, `level` reales y las celdas extra "Metas" (X/5) y "Tiempo" (Ns).
 - [ ] `forceGameOver()` fija `status: "gameover"` y cancela el loop; `restart()` deja el motor en estado limpio (score 0, 3 vidas, nivel 1, nenúfares vacíos, rana en inicio, timer 30s).
-- [ ] Desmontar el componente no deja el loop de `requestAnimationFrame` corriendo en segundo plano.
+- [ ] `games` tiene la fila con `id = 'frogger'` (ya no `'ranaria'`), `title = 'FROGGER'`, y `cat = 'ARCADE'`, `color = 'green'`, `cover = 'cover-rana'` sin cambios en esos tres campos.
+- [ ] `select * from games where id='ranaria'` no devuelve filas.
+- [ ] `components/games/registry.tsx` tiene la entrada `frogger` en `GAME_ENGINES`; `components/GamePlayer.tsx` no fue modificado.
+- [ ] `/juego/frogger` y `/juego/frogger/jugar` cargan sin errores 404.
+- [ ] La tarjeta de Frogger en `/biblioteca` muestra la portada `cover-rana`, no el placeholder genérico.
+- [ ] Guardar puntuación desde el modal llama a `POST /api/scores` con `game_id: "frogger"` y la fila aparece en la tabla `scores`.
+- [ ] "JUGAR DE NUEVO" reinicia el motor a estado limpio y vuelve a mostrar el overlay de inicio.
+- [ ] Ningún otro juego del vault (`serpentina`, `gloton`, `invasores`, `asteroids`, `duelo-pixel`, `tetris`, `arkanoid`, `snake`) cambia de comportamiento.
+- [ ] Desmontar el componente/página (SALIR o navegar a otra ruta) no deja el loop de `requestAnimationFrame` corriendo en segundo plano.
 
 ## Decisions
 
@@ -164,23 +203,33 @@ Convenciones:
 - **No:** tortugas que se sumergen, cocodrilos, serpientes o moscas-bonus del arcade original — quedan fuera para mantener la complejidad del motor comparable a Tetris/Arkanoid/Snake. Se documenta como scope-out.
 - **No:** assets externos (spritesheets/audio) — todo se dibuja con formas de color sólido en canvas, como Tetris y la serpiente de Snake. Evita carga asíncrona y mantiene el motor autocontenido.
 - **No:** sonido, controles táctiles/mouse, auth/anti-cheat real, realtime. Mismo criterio que specs 05/06/07/08/09.
+- **Sí:** renombrar `ranaria` → `frogger` (`UPDATE`, no `INSERT` nuevo), conservando `cat`/`color`/`cover`. Confirmado con el usuario — mismo patrón que specs 07 (`caida`→`tetris`) y 08 (`bloque-buster`→`arkanoid`); evita una fila mock huérfana y el mock `ranaria` ya describe exactamente a Frogger.
+- **Sí:** `title` pasa a "FROGGER" (nombre real) y `short`/`long` se reescriben para describir la mecánica confirmada por el usuario (autopista + río + nenúfares + timer).
+- **No:** cambiar `cat`, `color` o `cover` — se mantienen `ARCADE`/`green`/`cover-rana` del mock actual. `cover-rana` ya es una rana cruzando carriles, así que no hace falta una portada nueva.
+- **Sí:** reusar el color `green` aunque también lo use Snake — la taxonomía fija tiene solo 4 colores y la reutilización ya es la norma en el catálogo; se prioriza conservar el `color` del mock (mismo criterio que Tetris/Arkanoid, que conservaron el color de su mock). Se descartó la alternativa de `cyan` (propuesta previa del planner) por no justificar una desviación del patrón de renombrado ni tocar `cover`.
+- **No:** redirección desde la ruta antigua `/juego/ranaria/...`. Confirmado — sin tráfico real en producción, mismo criterio que specs 05/07/08.
+- **Sí:** guardado de score vía el `POST /api/scores` existente con `game_id: "frogger"`, sin persistencia nueva. Confirmado — el data layer ya es data-driven por `game.id` (SPEC 06).
 
 ## Risks
 
-| Riesgo                                                                                                                                                                                                                        | Mitigación                                                                                                                                                                                                            |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| El `useEffect` que instancia el motor puede ejecutarse dos veces en React 19 StrictMode (dev), duplicando el `requestAnimationFrame` loop o los listeners de teclado.                                                         | `FroggerCanvas.tsx` usa un guard (ref booleana) para asegurar una sola instancia real del engine por montaje, y `destroy()` limpia listeners/loop en cada cleanup del efecto. Mismo patrón que Tetris/Arkanoid/Snake. |
-| Mezclar movimiento discreto por celda con arrastre continuo en píxeles en el río puede producir bugs sutiles de sincronización entre la posición en píxeles de la rana y su celda lógica (falsos ahogos o falsas colisiones). | La celda lógica se deriva siempre por redondeo de la posición en píxeles, y el paso 7 del plan incluye un recorrido manual jugando cruces completos por el río, no solo verificación de compilación.                  |
-| El acumulador de `dt` mal implementado puede desincronizar el movimiento de vehículos/plataformas y el timer del reloj real, dando dificultad inconsistente entre dispositivos con distinto refresh rate.                     | Se usa el mismo patrón de acumulador de `dt` capado que Asteroids/Tetris/Arkanoid/Snake, con velocidades en px/s multiplicadas por dt.                                                                                |
-| Reaparecer la rana o escalar velocidades por nivel sin tope podría volver el juego injugable en niveles altos.                                                                                                                | El multiplicador de velocidad acumulado se topa en `MAX_SPEED_MULT = 2.5`; la reaparición usa siempre la celda de inicio fija y reinicia el timer.                                                                    |
+| Riesgo                                                                                                                                                                                                                                                                       | Mitigación                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| El `useEffect` que instancia el motor puede ejecutarse dos veces en React 19 StrictMode (dev), duplicando el `requestAnimationFrame` loop o los listeners de teclado.                                                                                                        | `FroggerCanvas.tsx` usa un guard (ref booleana) para asegurar una sola instancia real del engine por montaje, y `destroy()` limpia listeners/loop en cada cleanup del efecto. Mismo patrón que Tetris/Arkanoid/Snake. |
+| Mezclar movimiento discreto por celda con arrastre continuo en píxeles en el río puede producir bugs sutiles de sincronización entre la posición en píxeles de la rana y su celda lógica (falsos ahogos o falsas colisiones).                                                | La celda lógica se deriva siempre por redondeo de la posición en píxeles, y el recorrido manual del paso 10 incluye jugar cruces completos por el río, no solo verificación de compilación.                           |
+| El acumulador de `dt` mal implementado puede desincronizar el movimiento de vehículos/plataformas y el timer del reloj real, dando dificultad inconsistente entre dispositivos con distinto refresh rate.                                                                    | Se usa el mismo patrón de acumulador de `dt` capado que Asteroids/Tetris/Arkanoid/Snake, con velocidades en px/s multiplicadas por dt.                                                                                |
+| Reaparecer la rana o escalar velocidades por nivel sin tope podría volver el juego injugable en niveles altos.                                                                                                                                                               | El multiplicador de velocidad acumulado se topa en `MAX_SPEED_MULT = 2.5`; la reaparición usa siempre la celda de inicio fija y reinicia el timer.                                                                    |
+| Renombrar `id` de `'ranaria'` a `'frogger'` rompe cualquier puntuación ya guardada en `scores` con `game_id='ranaria'` (si existiera) o enlaces a `/juego/ranaria/...`.                                                                                                      | Sin impacto real hoy — no hay usuarios ni datos reales en producción todavía. Mismo riesgo aceptado que specs 05/07/08.                                                                                               |
+| Next.js 16.2.10/React 19.2.4 no son las versiones conocidas por el asistente; si `/spec-impl` termina tocando `app/juego/[id]/page.tsx` o el reproductor al integrar la ruta, debe verificar contra `node_modules/next/dist/docs/` en vez de asumir convenciones recordadas. | Recordatorio heredado de `AGENTS.md`. En la práctica la integración solo agrega una entrada a `GAME_ENGINES` y actualiza una fila de datos, sin tocar routing.                                                        |
 
 ## What is **not** in this spec
 
-- Integración con `GAME_ENGINES`, la tabla `games`, la portada del catálogo y el guardado de score (van en `02-frogger-catalogo.md`).
 - Tortugas que se sumergen, cocodrilos, serpientes o moscas-bonus.
 - Sonido/música, controles táctiles/mouse.
 - Sprites animados de la rana.
 - Un estado `"dead"` intermedio distinto de `"playing"`/`"gameover"`.
+- Una clase `cover-frogger` nueva o el rediseño de `cover-rana`.
+- Redirección desde `/juego/ranaria/...`.
+- Cambios a otros juegos del vault o al data layer (`lib/games.ts`, `lib/scores.ts`, `app/api/scores/route.ts`).
 - Auth/anti-cheat real, realtime, filtros de leaderboard.
 
-Cada uno de esos, si se implementa, va en su propio spec.
+Cada uno de estos, si se necesita, va en un spec futuro.
