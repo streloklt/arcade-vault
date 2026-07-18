@@ -63,6 +63,56 @@ const COLOR_ASPHALT = "#2b2b2b";
 const COLOR_FROG = "#7CFC00";
 const COLOR_HOME_EMPTY = "rgba(255,255,255,0.15)";
 const COLOR_HOME_FROG = "#7CFC00";
+const COLOR_LOG = "#8b5a2b";
+const COLOR_TURTLE = "#2e8b57";
+
+const VEHICLE_COLORS = ["#e74c3c", "#f39c12", "#9b59b6", "#e67e22", "#3498db"];
+
+function makeRoadLanes(): RoadLane[] {
+  const laneWidth = COLS * CELL;
+  return ROAD_ROWS.map((row, i) => {
+    const dir: 1 | -1 = i % 2 === 0 ? 1 : -1;
+    const speed = 60 + i * 15;
+    const lengthCells: 1 | 2 = i % 2 === 0 ? 1 : 2;
+    const spacing = laneWidth / 3;
+    const vehicles: Vehicle[] = [0, 1, 2].map((n) => ({
+      x: n * spacing,
+      lengthCells,
+      color: VEHICLE_COLORS[i % VEHICLE_COLORS.length],
+    }));
+    return { row, dir, speed, vehicles };
+  });
+}
+
+function makeRiverLanes(): RiverLane[] {
+  const laneWidth = COLS * CELL;
+  return RIVER_ROWS.map((row, i) => {
+    const dir: 1 | -1 = i % 2 === 0 ? -1 : 1;
+    const speed = 40 + i * 10;
+    const type: "log" | "turtle" = i % 2 === 0 ? "log" : "turtle";
+    const lengthCells: 2 | 3 = type === "log" ? 3 : 2;
+    const spacing = laneWidth / 2.5;
+    const platforms: Platform[] = [0, 1, 2].map((n) => ({
+      x: n * spacing,
+      lengthCells,
+      type,
+    }));
+    return { row, dir, speed, platforms };
+  });
+}
+
+function wrapObject(
+  obj: { x: number; lengthCells: number },
+  dir: 1 | -1,
+  laneWidth: number,
+) {
+  const w = obj.lengthCells * CELL;
+  if (dir === 1 && obj.x > laneWidth) {
+    obj.x = -w;
+  } else if (dir === -1 && obj.x + w < 0) {
+    obj.x = laneWidth;
+  }
+}
 
 export function createFroggerGame(
   canvas: HTMLCanvasElement,
@@ -75,8 +125,8 @@ export function createFroggerGame(
     y: START_CELL.row * CELL,
   };
   let furthestRow = START_CELL.row;
-  const roadLanes: RoadLane[] = [];
-  const riverLanes: RiverLane[] = [];
+  let roadLanes: RoadLane[] = makeRoadLanes();
+  let riverLanes: RiverLane[] = makeRiverLanes();
   let homeOccupied: boolean[] = HOME_COLS.map(() => false);
 
   let score = 0;
@@ -110,8 +160,24 @@ export function createFroggerGame(
     // implementado en el paso 4
   }
 
-  function update(_dt: number) {
-    // implementado en los pasos 3-5
+  function advanceLanes(dt: number) {
+    const laneWidth = COLS * CELL;
+    for (const lane of roadLanes) {
+      for (const v of lane.vehicles) {
+        v.x += lane.dir * lane.speed * speedMult * dt;
+        wrapObject(v, lane.dir, laneWidth);
+      }
+    }
+    for (const lane of riverLanes) {
+      for (const p of lane.platforms) {
+        p.x += lane.dir * lane.speed * speedMult * dt;
+        wrapObject(p, lane.dir, laneWidth);
+      }
+    }
+  }
+
+  function update(dt: number) {
+    advanceLanes(dt);
   }
 
   function drawBoard() {
@@ -162,6 +228,48 @@ export function createFroggerGame(
     });
   }
 
+  function drawVehicles() {
+    if (!ctx) return;
+    for (const lane of roadLanes) {
+      for (const v of lane.vehicles) {
+        ctx.fillStyle = v.color;
+        ctx.fillRect(
+          v.x + 2,
+          lane.row * CELL + 4,
+          v.lengthCells * CELL - 4,
+          CELL - 8,
+        );
+      }
+    }
+  }
+
+  function drawPlatforms() {
+    if (!ctx) return;
+    for (const lane of riverLanes) {
+      for (const p of lane.platforms) {
+        const w = p.lengthCells * CELL;
+        const y = lane.row * CELL;
+        if (p.type === "log") {
+          ctx.fillStyle = COLOR_LOG;
+          ctx.fillRect(p.x + 2, y + 4, w - 4, CELL - 8);
+        } else {
+          ctx.fillStyle = COLOR_TURTLE;
+          ctx.beginPath();
+          ctx.ellipse(
+            p.x + w / 2,
+            y + CELL / 2,
+            w / 2 - 2,
+            CELL / 2 - 4,
+            0,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+      }
+    }
+  }
+
   function drawFrog() {
     if (!ctx) return;
     ctx.fillStyle = COLOR_FROG;
@@ -177,6 +285,8 @@ export function createFroggerGame(
     if (!ctx) return;
     ctx.clearRect(0, 0, COLS * CELL, ROWS * CELL);
     drawBoard();
+    drawPlatforms();
+    drawVehicles();
     drawFrog();
   }
 
@@ -209,6 +319,8 @@ export function createFroggerGame(
   function restart() {
     frog = { x: START_CELL.col * CELL, y: START_CELL.row * CELL };
     furthestRow = START_CELL.row;
+    roadLanes = makeRoadLanes();
+    riverLanes = makeRiverLanes();
     homeOccupied = HOME_COLS.map(() => false);
     score = 0;
     lives = LIVES;
