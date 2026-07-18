@@ -57,6 +57,13 @@ interface FrogPos {
   y: number; // px
 }
 
+const COLOR_WATER = "#0a3d62";
+const COLOR_GRASS = "#1e6b2e";
+const COLOR_ASPHALT = "#2b2b2b";
+const COLOR_FROG = "#7CFC00";
+const COLOR_HOME_EMPTY = "rgba(255,255,255,0.15)";
+const COLOR_HOME_FROG = "#7CFC00";
+
 export function createFroggerGame(
   canvas: HTMLCanvasElement,
   onStateChange: (state: GameState) => void,
@@ -107,8 +114,70 @@ export function createFroggerGame(
     // implementado en los pasos 3-5
   }
 
+  function drawBoard() {
+    if (!ctx) return;
+
+    // Fila 0: meta (agua con nenúfares).
+    ctx.fillStyle = COLOR_WATER;
+    ctx.fillRect(0, 0, COLS * CELL, CELL);
+
+    // Filas 1-5: río.
+    ctx.fillStyle = COLOR_WATER;
+    ctx.fillRect(
+      0,
+      RIVER_ROWS[0] * CELL,
+      COLS * CELL,
+      RIVER_ROWS.length * CELL,
+    );
+
+    // Fila 6: mediana segura.
+    ctx.fillStyle = COLOR_GRASS;
+    ctx.fillRect(0, SAFE_MEDIAN_ROW * CELL, COLS * CELL, CELL);
+
+    // Filas 7-11: autopista.
+    ctx.fillStyle = COLOR_ASPHALT;
+    ctx.fillRect(0, ROAD_ROWS[0] * CELL, COLS * CELL, ROAD_ROWS.length * CELL);
+
+    // Fila 12: zona de inicio.
+    ctx.fillStyle = COLOR_GRASS;
+    ctx.fillRect(0, START_CELL.row * CELL, COLS * CELL, CELL);
+
+    // Nenúfares (fila 0).
+    HOME_COLS.forEach((col, i) => {
+      const cx = col * CELL + CELL / 2;
+      const cy = CELL / 2;
+      ctx.fillStyle = COLOR_HOME_EMPTY;
+      ctx.beginPath();
+      ctx.arc(cx, cy, CELL * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      if (homeOccupied[i]) {
+        ctx.fillStyle = COLOR_HOME_FROG;
+        ctx.fillRect(
+          col * CELL + CELL * 0.25,
+          CELL * 0.25,
+          CELL * 0.5,
+          CELL * 0.5,
+        );
+      }
+    });
+  }
+
+  function drawFrog() {
+    if (!ctx) return;
+    ctx.fillStyle = COLOR_FROG;
+    ctx.fillRect(
+      frog.x + CELL * 0.15,
+      frog.y + CELL * 0.15,
+      CELL * 0.7,
+      CELL * 0.7,
+    );
+  }
+
   function draw() {
-    // implementado en el paso 2
+    if (!ctx) return;
+    ctx.clearRect(0, 0, COLS * CELL, ROWS * CELL);
+    drawBoard();
+    drawFrog();
   }
 
   function loop(ts: number) {
