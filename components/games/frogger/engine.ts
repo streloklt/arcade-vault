@@ -235,6 +235,7 @@ export function createFroggerGame(
   function handleKeyDown(e: KeyboardEvent) {
     const dir = KEY_DIRECTIONS[e.key];
     if (!dir) return;
+    e.preventDefault();
     moveFrog(dir.dx, dir.dy);
   }
 
