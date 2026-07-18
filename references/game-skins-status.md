@@ -90,3 +90,22 @@ Estados:
     muy oscuro `#0d0f08`, grilla oliva translúcida, estética CRT sin glow.
   - Paleta por skin en `Record<SkinId, SnakePalette>` (`components/games/snake/engine.ts`),
     inyectada vía prop `skin` → `setSkin(id)`; persistida global en `av_skin`.
+
+### Frogger
+
+- Fecha: 2026-07-18
+- Estado: con-skins
+- Skins: clasico (default), neon, retro
+- Descripción:
+  - `clasico`: look original preservado exacto (agua `#0a3d62`, pasto `#1e6b2e`, asfalto
+    `#2b2b2b`, rana `#7CFC00`, nenúfar vacío `rgba(255,255,255,0.15)`, tronco `#8b5a2b`,
+    tortuga `#2e8b57`, vehículos `#e74c3c/#f39c12/#9b59b6/#e67e22/#3498db`), sin glow.
+  - `neon`: superficies casi negras (agua `#001b33`, pasto `#0d2b1a`, asfalto `#0a0a12`)
+    con actores saturados y glow tipo tubo (rana `#39ff14`, tronco `#ff8c1a`, tortuga
+    `#00e5c7`, vehículos `#ff2079/#faff00/#b026ff/#ff5e00/#00e5ff`) vía `shadowBlur`.
+  - `retro`: paleta apagada/terrosa 8-bit CRT sin glow (agua `#1b3a4a`, pasto `#35502a`,
+    asfalto `#3a3a34`, rana `#b0cf72`, tronco `#6e4a2a`, tortuga `#4a7a5a`, vehículos
+    `#b5533f/#c99a3f/#7a5a8f/#b5763f/#4a7391`).
+  - Paleta por skin en `Record<SkinId, FroggerPalette>` (`components/games/frogger/engine.ts`);
+    los vehículos guardan `colorIndex` y resuelven el color al dibujar. Inyectada vía prop
+    `skin` → `setSkin(id)`; persistida global en `av_skin`.
