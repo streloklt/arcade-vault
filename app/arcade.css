@@ -2946,19 +2946,19 @@ body.av-hide-nav .av-nav {
 .dp:active .dp-arrow {
   filter: drop-shadow(0 0 6px var(--cyan)) drop-shadow(0 0 12px var(--cyan));
 }
-.dp-up {
+.dpad-up {
   top: 0;
   left: 53px;
 }
-.dp-down {
+.dpad-down {
   bottom: 0;
   left: 53px;
 }
-.dp-left {
+.dpad-left {
   left: 0;
   top: 53px;
 }
-.dp-right {
+.dpad-right {
   right: 0;
   top: 53px;
 }
@@ -3133,11 +3133,47 @@ body.av-hide-nav .av-nav {
     padding: 12px 8px;
   }
 
-  .touch-controls {
-    flex-wrap: wrap;
-    justify-content: space-around;
+  .gp {
     margin-top: 20px;
-    padding: 12px;
-    gap: 12px;
+    padding: 12px 14px 10px;
+    border-radius: 16px;
+  }
+  .gp-body {
+    gap: 14px;
+    padding: 18px 6px;
+  }
+  .gp-dpad {
+    width: 144px;
+    height: 144px;
+  }
+  .dp {
+    width: 46px;
+    height: 46px;
+    border-radius: 8px;
+  }
+  .dpad-up {
+    left: 49px;
+  }
+  .dpad-down {
+    left: 49px;
+  }
+  .dpad-left {
+    top: 49px;
+  }
+  .dpad-right {
+    top: 49px;
+  }
+  .dp-hub {
+    top: 49px;
+    left: 49px;
+    width: 46px;
+    height: 46px;
+  }
+  .ab {
+    width: 64px;
+    height: 64px;
+  }
+  .gp-actions {
+    gap: 16px;
   }
 }
