@@ -182,6 +182,40 @@ export function createFroggerGame(
     };
   }
 
+  function respawnFrog() {
+    frog = { x: START_CELL.col * CELL, y: START_CELL.row * CELL };
+    furthestRow = START_CELL.row;
+    crossingTimeLeft = CROSSING_SECONDS;
+  }
+
+  function loseLife() {
+    lives -= 1;
+    if (lives <= 0) {
+      lives = 0;
+      status = "gameover";
+      stop();
+    } else {
+      respawnFrog();
+    }
+  }
+
+  function handleHomeArrival(col: number) {
+    const homeIndex = HOME_COLS.indexOf(col);
+    if (homeIndex === -1 || homeOccupied[homeIndex]) {
+      loseLife();
+      return;
+    }
+    homeOccupied[homeIndex] = true;
+    score += SCORE_HOME + Math.floor(crossingTimeLeft) * SCORE_TIME_PER_SEC;
+    if (homeOccupied.every(Boolean)) {
+      score += SCORE_LEVEL_CLEAR;
+      level += 1;
+      speedMult = Math.min(MAX_SPEED_MULT, speedMult * LEVEL_SPEED_MULT);
+      homeOccupied = HOME_COLS.map(() => false);
+    }
+    respawnFrog();
+  }
+
   function moveFrog(dx: number, dy: number) {
     if (status !== "playing") return;
     const cell = frogCell();
@@ -192,6 +226,9 @@ export function createFroggerGame(
     if (newRow < furthestRow) {
       score += SCORE_FORWARD;
       furthestRow = newRow;
+    }
+    if (newRow === 0) {
+      handleHomeArrival(newCol);
     }
   }
 
@@ -217,21 +254,50 @@ export function createFroggerGame(
     }
   }
 
-  function applyRiverDrag(dt: number) {
-    const { row } = frogCell();
-    const lane = riverLanes.find((l) => l.row === row);
-    if (!lane) return;
-    const onPlatform = lane.platforms.some(
-      (p) => frog.x + CELL > p.x && frog.x < p.x + p.lengthCells * CELL,
-    );
-    if (onPlatform) {
-      frog.x += lane.dir * lane.speed * speedMult * dt;
-    }
-  }
-
   function update(dt: number) {
     advanceLanes(dt);
-    applyRiverDrag(dt);
+
+    if (status !== "playing") {
+      emitState();
+      return;
+    }
+
+    crossingTimeLeft -= dt;
+    if (crossingTimeLeft <= 0) {
+      loseLife();
+      emitState();
+      return;
+    }
+
+    const { row } = frogCell();
+    if (ROAD_ROWS.includes(row)) {
+      const lane = roadLanes.find((l) => l.row === row);
+      const hit = lane?.vehicles.some(
+        (v) => frog.x + CELL > v.x && frog.x < v.x + v.lengthCells * CELL,
+      );
+      if (hit) {
+        loseLife();
+        emitState();
+        return;
+      }
+    } else if (RIVER_ROWS.includes(row)) {
+      const lane = riverLanes.find((l) => l.row === row);
+      const platform = lane?.platforms.find(
+        (p) => frog.x + CELL > p.x && frog.x < p.x + p.lengthCells * CELL,
+      );
+      if (!platform) {
+        loseLife();
+        emitState();
+        return;
+      }
+      if (lane) frog.x += lane.dir * lane.speed * speedMult * dt;
+      if (frog.x < 0 || frog.x + CELL > COLS * CELL) {
+        loseLife();
+        emitState();
+        return;
+      }
+    }
+
     emitState();
   }
 
@@ -352,7 +418,9 @@ export function createFroggerGame(
     lastTs = ts;
     update(dt);
     draw();
-    animId = requestAnimationFrame(loop);
+    if (running) {
+      animId = requestAnimationFrame(loop);
+    }
   }
 
   function start() {
@@ -372,6 +440,12 @@ export function createFroggerGame(
   }
 
   function restart() {
+    running = false;
+    if (animId !== null) {
+      cancelAnimationFrame(animId);
+      animId = null;
+    }
+    lastTs = null;
     frog = { x: START_CELL.col * CELL, y: START_CELL.row * CELL };
     furthestRow = START_CELL.row;
     roadLanes = makeRoadLanes();
@@ -383,6 +457,7 @@ export function createFroggerGame(
     speedMult = 1;
     crossingTimeLeft = CROSSING_SECONDS;
     status = "playing";
+    draw();
     emitState();
   }
 
