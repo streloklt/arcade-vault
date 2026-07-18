@@ -214,9 +214,21 @@ export function createFroggerGame(
   let animId: number | null = null;
   let lastTs: number | null = null;
   let running = false;
+  let lastEmitted: GameState | null = null;
+
+  function sameExtraStats(
+    a: GameState["extraStats"],
+    b: GameState["extraStats"],
+  ) {
+    if (a === b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    return a.every(
+      (stat, i) => stat.label === b[i].label && stat.value === b[i].value,
+    );
+  }
 
   function emitState() {
-    onStateChange({
+    const state: GameState = {
       score,
       lives,
       level,
@@ -228,7 +240,19 @@ export function createFroggerGame(
           value: `${Math.max(0, Math.ceil(crossingTimeLeft))}s`,
         },
       ],
-    });
+    };
+    if (
+      lastEmitted &&
+      lastEmitted.score === state.score &&
+      lastEmitted.lives === state.lives &&
+      lastEmitted.level === state.level &&
+      lastEmitted.status === state.status &&
+      sameExtraStats(lastEmitted.extraStats, state.extraStats)
+    ) {
+      return;
+    }
+    lastEmitted = state;
+    onStateChange(state);
   }
 
   function frogCell() {
