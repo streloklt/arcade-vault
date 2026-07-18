@@ -1,5 +1,6 @@
 import type { GameState } from "@/components/games/registry";
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import { drawGlowSprite, getGlowSprite } from "@/components/games/glowSprite";
 
 const CANVAS_W = 800;
 
@@ -496,14 +497,27 @@ export function createArkanoidGame(
   // para dar sensación de bisel, con glow opcional.
   function drawBlockRect(block: GameBlock) {
     const fill = palette.blocks[block.color] ?? palette.blocks.gray;
-    ctx.save();
+    const bx = block.x + 1;
+    const by = block.y + 1;
+    const bw = block.w - 2;
+    const bh = block.h - 2;
     if (palette.glow > 0) {
-      ctx.shadowBlur = palette.glow;
-      ctx.shadowColor = fill;
+      const sprite = getGlowSprite(
+        `arkanoid:block:${fill}:${palette.glow}`,
+        bw,
+        bh,
+        palette.glow,
+        fill,
+        (sctx) => {
+          sctx.fillStyle = fill;
+          sctx.fillRect(0, 0, bw, bh);
+        },
+      );
+      drawGlowSprite(ctx, sprite, bx, by);
+    } else {
+      ctx.fillStyle = fill;
+      ctx.fillRect(bx, by, bw, bh);
     }
-    ctx.fillStyle = fill;
-    ctx.fillRect(block.x + 1, block.y + 1, block.w - 2, block.h - 2);
-    ctx.restore();
   }
 
   // Flash de destrucción cuando no hay spritesheet: rect del color del bloque que
@@ -513,50 +527,89 @@ export function createArkanoidGame(
     const alpha = Math.max(0, 1 - t);
     const grow = t * 6;
     const fill = palette.blocks[exp.color] ?? palette.blocks.gray;
+    const destX = exp.x - grow;
+    const destY = exp.y - grow;
+    const destW = exp.w + grow * 2;
+    const destH = exp.h + grow * 2;
     ctx.save();
     ctx.globalAlpha = alpha;
     if (palette.glow > 0) {
-      ctx.shadowBlur = palette.glow;
-      ctx.shadowColor = fill;
+      // Sprite pre-renderizado al tamaño base del bloque, bliteado escalado al
+      // tamaño creciente de la explosión: evita volver a setear
+      // shadowBlur/shadowColor por frame sin re-renderizar el offscreen canvas.
+      const sprite = getGlowSprite(
+        `arkanoid:explosion:${fill}:${palette.glow}`,
+        exp.w,
+        exp.h,
+        palette.glow,
+        fill,
+        (sctx) => {
+          sctx.fillStyle = fill;
+          sctx.fillRect(0, 0, exp.w, exp.h);
+        },
+      );
+      const scaleX = destW / exp.w;
+      const scaleY = destH / exp.h;
+      ctx.drawImage(
+        sprite.canvas,
+        destX - sprite.offsetX * scaleX,
+        destY - sprite.offsetY * scaleY,
+        sprite.width * scaleX,
+        sprite.height * scaleY,
+      );
+    } else {
+      ctx.fillStyle = fill;
+      ctx.fillRect(destX, destY, destW, destH);
     }
-    ctx.fillStyle = fill;
-    ctx.fillRect(
-      exp.x - grow,
-      exp.y - grow,
-      exp.w + grow * 2,
-      exp.h + grow * 2,
-    );
     ctx.restore();
   }
 
   function drawPaddleRect() {
-    ctx.save();
     if (palette.glow > 0) {
-      ctx.shadowBlur = palette.glow;
-      ctx.shadowColor = palette.paddle;
+      const sprite = getGlowSprite(
+        `arkanoid:paddle:${palette.paddle}:${palette.glow}`,
+        paddle.w,
+        paddle.h,
+        palette.glow,
+        palette.paddle,
+        (sctx) => {
+          sctx.fillStyle = palette.paddle;
+          sctx.fillRect(0, 0, paddle.w, paddle.h);
+        },
+      );
+      drawGlowSprite(ctx, sprite, paddle.x, paddle.y);
+    } else {
+      ctx.fillStyle = palette.paddle;
+      ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
     }
-    ctx.fillStyle = palette.paddle;
-    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-    ctx.restore();
   }
 
   function drawBallCircle() {
-    ctx.save();
+    const cx = ball.x + ball.w / 2;
+    const cy = ball.y + ball.h / 2;
+    const r = ball.w / 2;
     if (palette.glow > 0) {
-      ctx.shadowBlur = palette.glow;
-      ctx.shadowColor = palette.ball;
+      const sprite = getGlowSprite(
+        `arkanoid:ball:${palette.ball}:${palette.glow}`,
+        r * 2,
+        r * 2,
+        palette.glow,
+        palette.ball,
+        (sctx) => {
+          sctx.fillStyle = palette.ball;
+          sctx.beginPath();
+          sctx.arc(0, 0, r, 0, Math.PI * 2);
+          sctx.fill();
+        },
+        true,
+      );
+      drawGlowSprite(ctx, sprite, cx, cy);
+    } else {
+      ctx.fillStyle = palette.ball;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.fillStyle = palette.ball;
-    ctx.beginPath();
-    ctx.arc(
-      ball.x + ball.w / 2,
-      ball.y + ball.h / 2,
-      ball.w / 2,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
-    ctx.restore();
   }
 
   function draw() {

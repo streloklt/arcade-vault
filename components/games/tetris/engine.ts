@@ -1,5 +1,6 @@
 import type { GameState } from "@/components/games/registry";
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import { drawGlowSprite, getGlowSprite } from "@/components/games/glowSprite";
 
 const COLS = 10;
 const ROWS = 20;
@@ -286,16 +287,29 @@ export function createTetrisGame(
     const color = palette.pieces[colorIndex - 1];
     const isGhost = alpha !== undefined && alpha < 1;
     context.globalAlpha = alpha ?? 1;
+    const bx = x * size + 1;
+    const by = y * size + 1;
+    const bs = size - 2;
     // Glow tipo neón solo en bloques opacos (no en la ghost piece).
     if (palette.glow > 0 && !isGhost) {
-      context.shadowColor = color;
-      context.shadowBlur = palette.glow;
+      const sprite = getGlowSprite(
+        `tetris:block:${color}:${size}:${palette.glow}`,
+        bs,
+        bs,
+        palette.glow,
+        color,
+        (sctx) => {
+          sctx.fillStyle = color;
+          sctx.fillRect(0, 0, bs, bs);
+        },
+      );
+      drawGlowSprite(context, sprite, bx, by);
+    } else {
+      context.fillStyle = color;
+      context.fillRect(bx, by, bs, bs);
     }
-    context.fillStyle = color;
-    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-    context.shadowBlur = 0;
     context.fillStyle = palette.highlight;
-    context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+    context.fillRect(bx, by, bs, 4);
     context.globalAlpha = 1;
   }
 
