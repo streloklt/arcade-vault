@@ -151,6 +151,7 @@ export function createTetrisGame(
 
   let rafId: number | null = null;
   let lastTime: number | null = null;
+  let lastEmitted: GameState | null = null;
 
   function createBoard(): number[][] {
     return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -266,13 +267,25 @@ export function createTetrisGame(
   }
 
   function notifyState() {
-    onStateChange({
+    const state: GameState = {
       score,
       lives: gameOver ? 0 : 1,
       level,
       status: gameOver ? "gameover" : "playing",
       extraStats: [{ label: "Líneas", value: String(lines) }],
-    });
+    };
+    if (
+      lastEmitted &&
+      lastEmitted.score === state.score &&
+      lastEmitted.lives === state.lives &&
+      lastEmitted.level === state.level &&
+      lastEmitted.status === state.status &&
+      lastEmitted.extraStats?.[0]?.value === state.extraStats?.[0]?.value
+    ) {
+      return;
+    }
+    lastEmitted = state;
+    onStateChange(state);
   }
 
   function drawBlock(

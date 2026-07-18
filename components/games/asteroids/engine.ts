@@ -503,6 +503,30 @@ export function createAsteroidsGame(
 
   let rafId: number | null = null;
   let lastTime: number | null = null;
+  let lastEmitted: AsteroidsState | null = null;
+
+  function emitState() {
+    const nextState: AsteroidsState = {
+      score,
+      lives,
+      level,
+      tripleShotRemaining: ship.tripleShot,
+      status: state,
+    };
+    if (
+      lastEmitted &&
+      lastEmitted.score === nextState.score &&
+      lastEmitted.lives === nextState.lives &&
+      lastEmitted.level === nextState.level &&
+      lastEmitted.status === nextState.status &&
+      lastEmitted.tripleShotRemaining.toFixed(1) ===
+        nextState.tripleShotRemaining.toFixed(1)
+    ) {
+      return;
+    }
+    lastEmitted = nextState;
+    onStateChange(nextState);
+  }
 
   function spawnAsteroids(count: number) {
     const SAFE_DIST = 130;
@@ -563,13 +587,7 @@ export function createAsteroidsGame(
       if (pressed("Space")) initGame();
       particles.forEach((p) => p.update(dt));
       particles = particles.filter((p) => !p.dead);
-      onStateChange({
-        score,
-        lives,
-        level,
-        tripleShotRemaining: ship.tripleShot,
-        status: state,
-      });
+      emitState();
       return;
     }
 
@@ -582,13 +600,7 @@ export function createAsteroidsGame(
         state = "playing";
         ship.reset();
       }
-      onStateChange({
-        score,
-        lives,
-        level,
-        tripleShotRemaining: ship.tripleShot,
-        status: state,
-      });
+      emitState();
       return;
     }
 
@@ -647,13 +659,7 @@ export function createAsteroidsGame(
 
     if (asteroids.length === 0) nextLevel();
 
-    onStateChange({
-      score,
-      lives,
-      level,
-      tripleShotRemaining: ship.tripleShot,
-      status: state,
-    });
+    emitState();
   }
 
   function drawHUD() {
@@ -724,23 +730,11 @@ export function createAsteroidsGame(
       lastTime = null;
       initGame();
       draw();
-      onStateChange({
-        score,
-        lives,
-        level,
-        tripleShotRemaining: ship.tripleShot,
-        status: state,
-      });
+      emitState();
     },
     forceGameOver() {
       state = "gameover";
-      onStateChange({
-        score,
-        lives,
-        level,
-        tripleShotRemaining: ship.tripleShot,
-        status: state,
-      });
+      emitState();
     },
     setSkin(id: SkinId) {
       palette = PALETTES[id];

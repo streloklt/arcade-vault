@@ -363,6 +363,7 @@ export function createArkanoidGame(
   let rafId: number | null = null;
   let lastTime: number | null = null;
   let startPending = false;
+  let lastEmitted: GameState | null = null;
 
   function initPaddle() {
     paddle.x = (canvas.width - paddle.w) / 2;
@@ -404,13 +405,25 @@ export function createArkanoidGame(
   }
 
   function notifyState() {
-    onStateChange({
+    const state: GameState = {
       score,
       lives,
       level: currentLevel,
       status: gameState === "gameover" ? "gameover" : "playing",
       extraStats: [{ label: "Nivel", value: `${currentLevel}/5` }],
-    });
+    };
+    if (
+      lastEmitted &&
+      lastEmitted.score === state.score &&
+      lastEmitted.lives === state.lives &&
+      lastEmitted.level === state.level &&
+      lastEmitted.status === state.status &&
+      lastEmitted.extraStats?.[0]?.value === state.extraStats?.[0]?.value
+    ) {
+      return;
+    }
+    lastEmitted = state;
+    onStateChange(state);
   }
 
   function update(dt: number) {

@@ -132,6 +132,7 @@ export function createSnakeGame(
 
   let rafId: number | null = null;
   let lastTime: number | null = null;
+  let lastEmitted: GameState | null = null;
 
   function pickFreeCell(): Vec2 {
     const occupied = new Set(segments.map((s) => `${s.x},${s.y}`));
@@ -181,12 +182,18 @@ export function createSnakeGame(
   }
 
   function notifyState() {
-    onStateChange({
-      score,
-      lives,
-      level,
-      status,
-    });
+    const state: GameState = { score, lives, level, status };
+    if (
+      lastEmitted &&
+      lastEmitted.score === state.score &&
+      lastEmitted.lives === state.lives &&
+      lastEmitted.level === state.level &&
+      lastEmitted.status === state.status
+    ) {
+      return;
+    }
+    lastEmitted = state;
+    onStateChange(state);
   }
 
   function handleCollision() {
