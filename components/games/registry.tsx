@@ -14,6 +14,7 @@ import type { AsteroidsState } from "@/components/games/asteroids/engine";
 import { ArkanoidCanvas } from "@/components/games/arkanoid/ArkanoidCanvas";
 import { TetrisCanvas } from "@/components/games/tetris/TetrisCanvas";
 import { SnakeCanvas } from "@/components/games/snake/SnakeCanvas";
+import { FroggerCanvas } from "@/components/games/frogger/FroggerCanvas";
 import type { SkinId } from "@/components/games/skins";
 import type { TouchButton } from "@/components/TouchControls";
 
@@ -145,5 +146,9 @@ export const GAME_ENGINES: Record<string, GameEngine> = {
     touchControls: standardTouchControls(
       new Set(["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"]),
     ),
+  },
+  frogger: {
+    Canvas: FroggerCanvas,
+    initialState: { score: 0, lives: 3, level: 1, status: "playing" },
   },
 };
