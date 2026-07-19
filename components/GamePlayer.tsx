@@ -23,18 +23,39 @@ export function GamePlayer({ game }: { game: Game }) {
   const isTouch = useIsTouchDevice();
   const engine = GAME_ENGINES[game.id];
   const canvasRef = useRef<GameCanvasHandle>(null);
-  const [engineState, setEngineState] = useState<GameState>(
-    engine?.initialState ?? {
-      score: 0,
-      lives: 3,
-      level: 1,
-      status: "playing",
-    },
+  const initialEngineState: GameState = engine?.initialState ?? {
+    score: 0,
+    lives: 3,
+    level: 1,
+    status: "playing",
+  };
+  // Estado del engine de alta frecuencia (score/lives/level/extraStats): vive
+  // en un ref, no en useState, para no forzar un re-render de todo el árbol
+  // del reproductor en cada frame. handleStateChange lo mantiene al día y
+  // escribe el HUD numérico directo al DOM. Nunca se lee `.current` durante
+  // el render (solo dentro del handler) para no pisar el valor imperativo:
+  // el HUD se pinta con `initialEngineState`, una referencia estable, así
+  // React nunca ve un cambio ahí y no vuelve a tocar esos nodos del DOM.
+  const latestStateRef = useRef<GameState>(initialEngineState);
+  const scoreRef = useRef<HTMLDivElement>(null);
+  const livesRef = useRef<HTMLDivElement>(null);
+  const levelRef = useRef<HTMLDivElement>(null);
+  const extraStatValueRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  // Solo la "forma" de extraStats (qué labels hay, con su valor al momento
+  // del cambio de forma) es estado real: cambia rara vez (ej. aparece/
+  // desaparece el power-up de Asteroids) y sí necesita montar/desmontar
+  // nodos. El valor de cada stat en cuadros posteriores se actualiza
+  // imperativo sin pasar por setState.
+  const [extraStatsShape, setExtraStatsShape] = useState(
+    initialEngineState.extraStats,
   );
+  const [finalScore, setFinalScore] = useState(0);
   const [mockScore, setMockScore] = useState(0);
-  const score = engine ? engineState.score : mockScore;
-  const lives = engine ? engineState.lives : 3;
-  const level = engine ? engineState.level : Math.floor(mockScore / 2500) + 1;
+  const score = engine ? initialEngineState.score : mockScore;
+  const lives = engine ? initialEngineState.lives : 3;
+  const level = engine
+    ? initialEngineState.level
+    : Math.floor(mockScore / 2500) + 1;
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [name, setName] = useState("INVITADO");
@@ -78,16 +99,39 @@ export function GamePlayer({ game }: { game: Game }) {
   }, [engine, over, paused]);
 
   const handleStateChange = (state: GameState) => {
-    setEngineState((prev) => {
-      const unchanged =
-        prev.score === state.score &&
-        prev.lives === state.lives &&
-        prev.level === state.level &&
-        prev.status === state.status &&
-        JSON.stringify(prev.extraStats) === JSON.stringify(state.extraStats);
-      return unchanged ? prev : state;
-    });
-    if (state.status === "gameover") setOver(true);
+    const prev = latestStateRef.current;
+    const unchanged =
+      prev.score === state.score &&
+      prev.lives === state.lives &&
+      prev.level === state.level &&
+      prev.status === state.status &&
+      JSON.stringify(prev.extraStats) === JSON.stringify(state.extraStats);
+    if (!unchanged) {
+      latestStateRef.current = state;
+      if (scoreRef.current)
+        scoreRef.current.textContent = state.score.toLocaleString("es-ES");
+      if (livesRef.current)
+        livesRef.current.textContent = "♥ ".repeat(state.lives).trim() || "—";
+      if (levelRef.current)
+        levelRef.current.textContent = String(state.level).padStart(2, "0");
+
+      setExtraStatsShape((prevShape) => {
+        const prevLabels = prevShape?.map((stat) => stat.label);
+        const newLabels = state.extraStats?.map((stat) => stat.label);
+        const sameShape =
+          prevLabels?.length === newLabels?.length &&
+          prevLabels?.every((label, i) => label === newLabels?.[i]);
+        return sameShape ? prevShape : state.extraStats;
+      });
+      state.extraStats?.forEach((stat) => {
+        const node = extraStatValueRefs.current.get(stat.label);
+        if (node) node.textContent = stat.value;
+      });
+    }
+    if (state.status === "gameover") {
+      setFinalScore(state.score);
+      setOver(true);
+    }
   };
 
   const endGame = () => {
@@ -126,21 +170,35 @@ export function GamePlayer({ game }: { game: Game }) {
           </div>
           <div className="hud-stat">
             <div className="l">Puntuación</div>
-            <div className="v">{score.toLocaleString("es-ES")}</div>
+            <div className="v" ref={scoreRef}>
+              {score.toLocaleString("es-ES")}
+            </div>
           </div>
           <div className="hud-stat lives">
             <div className="l">Vidas</div>
-            <div className="v">{"♥ ".repeat(lives).trim() || "—"}</div>
+            <div className="v" ref={livesRef}>
+              {"♥ ".repeat(lives).trim() || "—"}
+            </div>
           </div>
           <div className="hud-stat level">
             <div className="l">Nivel</div>
-            <div className="v">{String(level).padStart(2, "0")}</div>
+            <div className="v" ref={levelRef}>
+              {String(level).padStart(2, "0")}
+            </div>
           </div>
           {engine &&
-            engineState.extraStats?.map((stat) => (
+            extraStatsShape?.map((stat) => (
               <div className="hud-stat" key={stat.label}>
                 <div className="l">{stat.label}</div>
-                <div className="v">{stat.value}</div>
+                <div
+                  className="v"
+                  ref={(el) => {
+                    if (el) extraStatValueRefs.current.set(stat.label, el);
+                    else extraStatValueRefs.current.delete(stat.label);
+                  }}
+                >
+                  {stat.value}
+                </div>
               </div>
             ))}
         </div>
@@ -235,7 +293,9 @@ export function GamePlayer({ game }: { game: Game }) {
           <div className="modal">
             <h2>FIN DEL JUEGO</h2>
             <div className="final-label">PUNTUACIÓN FINAL</div>
-            <div className="final">{score.toLocaleString("es-ES")}</div>
+            <div className="final">
+              {(engine ? finalScore : mockScore).toLocaleString("es-ES")}
+            </div>
             {!saved ? (
               <div className="input-row">
                 <input
@@ -255,7 +315,7 @@ export function GamePlayer({ game }: { game: Game }) {
                       body: JSON.stringify({
                         game_id: game.id,
                         name,
-                        score,
+                        score: engine ? finalScore : mockScore,
                       }),
                     });
                   }}
