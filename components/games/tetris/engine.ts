@@ -204,9 +204,16 @@ export function createTetrisGame(
 
   function merge() {
     for (let r = 0; r < current.shape.length; r++)
-      for (let c = 0; c < current.shape[r].length; c++)
-        if (current.shape[r][c])
-          grid[current.y + r][current.x + c] = current.shape[r][c];
+      for (let c = 0; c < current.shape[r].length; c++) {
+        if (!current.shape[r][c]) continue;
+        const ny = current.y + r;
+        // Igual que collide(): las celdas por encima del tablero (ny < 0)
+        // son válidas durante el spawn/lock cerca del tope, pero grid no
+        // tiene filas negativas — sin este guard, mergear ahí tira y
+        // corta el loop antes de llegar a clearLines()/spawn().
+        if (ny < 0 || ny >= ROWS) continue;
+        grid[ny][current.x + c] = current.shape[r][c];
+      }
   }
 
   function clearLines() {
