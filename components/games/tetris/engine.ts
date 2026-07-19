@@ -111,6 +111,12 @@ const PIECES: (number[][] | null)[] = [
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+// Cuánto puede "descansar" una pieza tocando la pila antes de lockear,
+// independiente del dropInterval (que solo rige la caída por gravedad).
+// Sin esto, una pieza que completa una línea moviéndose solo con
+// izquierda/derecha queda visualmente asentada hasta 1000ms (nivel 1)
+// sin lockear ni limpiar la línea, dando la sensación de que "no pasa nada".
+const LOCK_DELAY = 300;
 
 interface Piece {
   type: number;
@@ -148,6 +154,7 @@ export function createTetrisGame(
   let gameOver: boolean;
   let dropAccum: number;
   let dropInterval: number;
+  let lockAccum: number;
 
   let rafId: number | null = null;
   let lastTime: number | null = null;
@@ -242,7 +249,6 @@ export function createTetrisGame(
 
   function hardDrop() {
     const gy = ghostY();
-    score += (gy - current.y) * 2;
     current.y = gy;
     lockPiece();
     notifyState();
@@ -251,7 +257,6 @@ export function createTetrisGame(
   function softDrop() {
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
-      score += 1;
     } else {
       lockPiece();
     }
@@ -262,6 +267,7 @@ export function createTetrisGame(
     merge();
     clearLines();
     spawn();
+    lockAccum = 0;
   }
 
   function spawn() {
@@ -398,15 +404,23 @@ export function createTetrisGame(
     lastTime = ts;
 
     if (!gameOver) {
-      dropAccum += dt;
-      if (dropAccum >= dropInterval) {
-        dropAccum = 0;
-        if (!collide(current.shape, current.x, current.y + 1)) {
-          current.y++;
-        } else {
+      const resting = collide(current.shape, current.x, current.y + 1);
+      if (resting) {
+        lockAccum += dt;
+        if (lockAccum >= LOCK_DELAY) {
+          lockAccum = 0;
+          dropAccum = 0;
           lockPiece();
+          notifyState();
         }
-        notifyState();
+      } else {
+        lockAccum = 0;
+        dropAccum += dt;
+        if (dropAccum >= dropInterval) {
+          dropAccum = 0;
+          current.y++;
+          notifyState();
+        }
       }
     }
 
@@ -428,6 +442,7 @@ export function createTetrisGame(
     gameOver = false;
     dropInterval = 1000;
     dropAccum = 0;
+    lockAccum = 0;
     next = randomPiece();
     spawn();
   }
