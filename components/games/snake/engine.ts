@@ -1,5 +1,6 @@
 import type { GameState } from "@/components/games/registry";
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import { drawGlowSprite, getGlowSprite } from "@/components/games/glowSprite";
 import {
   FRUIT_ATLAS,
   FRUIT_ATLAS_SOURCE,
@@ -97,6 +98,7 @@ export function createSnakeGame(
   const ctx = canvas.getContext("2d")!;
 
   let palette: SnakePalette = PALETTES[initialSkin];
+  let currentSkin: SkinId = initialSkin;
 
   let fruitImg: HTMLImageElement | null = null;
   let fruitImgLoaded = false;
@@ -130,6 +132,7 @@ export function createSnakeGame(
 
   let rafId: number | null = null;
   let lastTime: number | null = null;
+  let lastEmitted: GameState | null = null;
 
   function pickFreeCell(): Vec2 {
     const occupied = new Set(segments.map((s) => `${s.x},${s.y}`));
@@ -179,12 +182,18 @@ export function createSnakeGame(
   }
 
   function notifyState() {
-    onStateChange({
-      score,
-      lives,
-      level,
-      status,
-    });
+    const state: GameState = { score, lives, level, status };
+    if (
+      lastEmitted &&
+      lastEmitted.score === state.score &&
+      lastEmitted.lives === state.lives &&
+      lastEmitted.level === state.level &&
+      lastEmitted.status === state.status
+    ) {
+      return;
+    }
+    lastEmitted = state;
+    onStateChange(state);
   }
 
   function handleCollision() {
@@ -287,15 +296,29 @@ export function createSnakeGame(
     }
 
     segments.forEach((seg, i) => {
-      const color = i === 0 ? palette.head : palette.body;
+      const isHead = i === 0;
+      const color = isHead ? palette.head : palette.body;
+      const sx = seg.x * CELL + 1;
+      const sy = seg.y * CELL + 1;
+      const size = CELL - 2;
       if (palette.glow > 0) {
-        ctx.shadowBlur = palette.glow;
-        ctx.shadowColor = color;
+        const sprite = getGlowSprite(
+          `snake:${currentSkin}:${isHead ? "head" : "body"}`,
+          size,
+          size,
+          palette.glow,
+          color,
+          (sctx) => {
+            sctx.fillStyle = color;
+            sctx.fillRect(0, 0, size, size);
+          },
+        );
+        drawGlowSprite(ctx, sprite, sx, sy);
+      } else {
+        ctx.fillStyle = color;
+        ctx.fillRect(sx, sy, size, size);
       }
-      ctx.fillStyle = color;
-      ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
     });
-    ctx.shadowBlur = 0;
   }
 
   function loop(timestamp: number) {
@@ -386,6 +409,7 @@ export function createSnakeGame(
     },
     setSkin(id: SkinId) {
       palette = PALETTES[id];
+      currentSkin = id;
       draw();
     },
     destroy() {

@@ -1,4 +1,9 @@
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import {
+  drawGlowSprite,
+  getGlowSprite,
+  getInstanceGlowSprite,
+} from "@/components/games/glowSprite";
 
 const W = 800;
 const H = 600;
@@ -101,16 +106,28 @@ class Bullet {
   }
 
   draw(ctx: CanvasRenderingContext2D, palette: AsteroidsPalette) {
-    ctx.save();
     if (palette.glow > 0) {
-      ctx.shadowBlur = palette.glow;
-      ctx.shadowColor = palette.bullet;
+      const sprite = getGlowSprite(
+        `asteroids:bullet:${palette.bullet}:${palette.glow}`,
+        this.radius * 2,
+        this.radius * 2,
+        palette.glow,
+        palette.bullet,
+        (sctx) => {
+          sctx.fillStyle = palette.bullet;
+          sctx.beginPath();
+          sctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+          sctx.fill();
+        },
+        true,
+      );
+      drawGlowSprite(ctx, sprite, this.x, this.y);
+    } else {
+      ctx.fillStyle = palette.bullet;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.fillStyle = palette.bullet;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
   }
 }
 
@@ -166,18 +183,38 @@ class Asteroid {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rot);
     if (palette.glow > 0) {
-      ctx.shadowBlur = palette.glow;
-      ctx.shadowColor = palette.asteroid;
+      const sprite = getInstanceGlowSprite(
+        this,
+        `${palette.asteroid}:${palette.glow}`,
+        this.radius * 2,
+        this.radius * 2,
+        palette.glow,
+        palette.asteroid,
+        (sctx) => {
+          sctx.strokeStyle = palette.asteroid;
+          sctx.lineWidth = 1.5;
+          sctx.lineJoin = "round";
+          sctx.beginPath();
+          sctx.moveTo(this.verts[0][0], this.verts[0][1]);
+          for (let i = 1; i < this.verts.length; i++)
+            sctx.lineTo(this.verts[i][0], this.verts[i][1]);
+          sctx.closePath();
+          sctx.stroke();
+        },
+        true,
+      );
+      drawGlowSprite(ctx, sprite, 0, 0);
+    } else {
+      ctx.strokeStyle = palette.asteroid;
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(this.verts[0][0], this.verts[0][1]);
+      for (let i = 1; i < this.verts.length; i++)
+        ctx.lineTo(this.verts[i][0], this.verts[i][1]);
+      ctx.closePath();
+      ctx.stroke();
     }
-    ctx.strokeStyle = palette.asteroid;
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(this.verts[0][0], this.verts[0][1]);
-    for (let i = 1; i < this.verts.length; i++)
-      ctx.lineTo(this.verts[i][0], this.verts[i][1]);
-    ctx.closePath();
-    ctx.stroke();
     ctx.restore();
   }
 }
@@ -308,23 +345,46 @@ class Ship {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    if (palette.glow > 0) {
-      ctx.shadowBlur = palette.glow;
-      ctx.shadowColor = palette.ship;
-    }
-    ctx.strokeStyle = palette.ship;
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = "round";
 
-    ctx.beginPath();
-    ctx.moveTo(20, 0);
-    ctx.lineTo(-12, -9);
-    ctx.lineTo(-7, 0);
-    ctx.lineTo(-12, 9);
-    ctx.closePath();
-    ctx.stroke();
+    if (palette.glow > 0) {
+      const sprite = getGlowSprite(
+        `asteroids:ship:${palette.ship}:${palette.glow}`,
+        32,
+        18,
+        palette.glow,
+        palette.ship,
+        (sctx) => {
+          sctx.strokeStyle = palette.ship;
+          sctx.lineWidth = 1.5;
+          sctx.lineJoin = "round";
+          sctx.beginPath();
+          sctx.moveTo(20, 0);
+          sctx.lineTo(-12, -9);
+          sctx.lineTo(-7, 0);
+          sctx.lineTo(-12, 9);
+          sctx.closePath();
+          sctx.stroke();
+        },
+      );
+      drawGlowSprite(ctx, sprite, 0, 0);
+    } else {
+      ctx.strokeStyle = palette.ship;
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(20, 0);
+      ctx.lineTo(-12, -9);
+      ctx.lineTo(-7, 0);
+      ctx.lineTo(-12, 9);
+      ctx.closePath();
+      ctx.stroke();
+    }
 
     if (this.thrusting && Math.random() > 0.35) {
+      if (palette.glow > 0) {
+        ctx.shadowBlur = palette.glow;
+        ctx.shadowColor = palette.ship;
+      }
       ctx.beginPath();
       ctx.moveTo(-8, -4);
       ctx.lineTo(-8 - rand(6, 14), 0);
@@ -443,6 +503,30 @@ export function createAsteroidsGame(
 
   let rafId: number | null = null;
   let lastTime: number | null = null;
+  let lastEmitted: AsteroidsState | null = null;
+
+  function emitState() {
+    const nextState: AsteroidsState = {
+      score,
+      lives,
+      level,
+      tripleShotRemaining: ship.tripleShot,
+      status: state,
+    };
+    if (
+      lastEmitted &&
+      lastEmitted.score === nextState.score &&
+      lastEmitted.lives === nextState.lives &&
+      lastEmitted.level === nextState.level &&
+      lastEmitted.status === nextState.status &&
+      lastEmitted.tripleShotRemaining.toFixed(1) ===
+        nextState.tripleShotRemaining.toFixed(1)
+    ) {
+      return;
+    }
+    lastEmitted = nextState;
+    onStateChange(nextState);
+  }
 
   function spawnAsteroids(count: number) {
     const SAFE_DIST = 130;
@@ -503,13 +587,7 @@ export function createAsteroidsGame(
       if (pressed("Space")) initGame();
       particles.forEach((p) => p.update(dt));
       particles = particles.filter((p) => !p.dead);
-      onStateChange({
-        score,
-        lives,
-        level,
-        tripleShotRemaining: ship.tripleShot,
-        status: state,
-      });
+      emitState();
       return;
     }
 
@@ -522,13 +600,7 @@ export function createAsteroidsGame(
         state = "playing";
         ship.reset();
       }
-      onStateChange({
-        score,
-        lives,
-        level,
-        tripleShotRemaining: ship.tripleShot,
-        status: state,
-      });
+      emitState();
       return;
     }
 
@@ -587,13 +659,7 @@ export function createAsteroidsGame(
 
     if (asteroids.length === 0) nextLevel();
 
-    onStateChange({
-      score,
-      lives,
-      level,
-      tripleShotRemaining: ship.tripleShot,
-      status: state,
-    });
+    emitState();
   }
 
   function drawHUD() {
@@ -664,23 +730,11 @@ export function createAsteroidsGame(
       lastTime = null;
       initGame();
       draw();
-      onStateChange({
-        score,
-        lives,
-        level,
-        tripleShotRemaining: ship.tripleShot,
-        status: state,
-      });
+      emitState();
     },
     forceGameOver() {
       state = "gameover";
-      onStateChange({
-        score,
-        lives,
-        level,
-        tripleShotRemaining: ship.tripleShot,
-        status: state,
-      });
+      emitState();
     },
     setSkin(id: SkinId) {
       palette = PALETTES[id];

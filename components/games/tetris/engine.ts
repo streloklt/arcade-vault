@@ -1,5 +1,6 @@
 import type { GameState } from "@/components/games/registry";
 import { DEFAULT_SKIN, type SkinId } from "@/components/games/skins";
+import { drawGlowSprite, getGlowSprite } from "@/components/games/glowSprite";
 
 const COLS = 10;
 const ROWS = 20;
@@ -110,6 +111,12 @@ const PIECES: (number[][] | null)[] = [
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+// Cuánto puede "descansar" una pieza tocando la pila antes de lockear,
+// independiente del dropInterval (que solo rige la caída por gravedad).
+// Sin esto, una pieza que completa una línea moviéndose solo con
+// izquierda/derecha queda visualmente asentada hasta 1000ms (nivel 1)
+// sin lockear ni limpiar la línea, dando la sensación de que "no pasa nada".
+const LOCK_DELAY = 300;
 
 interface Piece {
   type: number;
@@ -147,9 +154,11 @@ export function createTetrisGame(
   let gameOver: boolean;
   let dropAccum: number;
   let dropInterval: number;
+  let lockAccum: number;
 
   let rafId: number | null = null;
   let lastTime: number | null = null;
+  let lastEmitted: GameState | null = null;
 
   function createBoard(): number[][] {
     return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -202,9 +211,16 @@ export function createTetrisGame(
 
   function merge() {
     for (let r = 0; r < current.shape.length; r++)
-      for (let c = 0; c < current.shape[r].length; c++)
-        if (current.shape[r][c])
-          grid[current.y + r][current.x + c] = current.shape[r][c];
+      for (let c = 0; c < current.shape[r].length; c++) {
+        if (!current.shape[r][c]) continue;
+        const ny = current.y + r;
+        // Igual que collide(): las celdas por encima del tablero (ny < 0)
+        // son válidas durante el spawn/lock cerca del tope, pero grid no
+        // tiene filas negativas — sin este guard, mergear ahí tira y
+        // corta el loop antes de llegar a clearLines()/spawn().
+        if (ny < 0 || ny >= ROWS) continue;
+        grid[ny][current.x + c] = current.shape[r][c];
+      }
   }
 
   function clearLines() {
@@ -233,7 +249,6 @@ export function createTetrisGame(
 
   function hardDrop() {
     const gy = ghostY();
-    score += (gy - current.y) * 2;
     current.y = gy;
     lockPiece();
     notifyState();
@@ -242,7 +257,6 @@ export function createTetrisGame(
   function softDrop() {
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
-      score += 1;
     } else {
       lockPiece();
     }
@@ -253,6 +267,7 @@ export function createTetrisGame(
     merge();
     clearLines();
     spawn();
+    lockAccum = 0;
   }
 
   function spawn() {
@@ -265,13 +280,25 @@ export function createTetrisGame(
   }
 
   function notifyState() {
-    onStateChange({
+    const state: GameState = {
       score,
       lives: gameOver ? 0 : 1,
       level,
       status: gameOver ? "gameover" : "playing",
       extraStats: [{ label: "Líneas", value: String(lines) }],
-    });
+    };
+    if (
+      lastEmitted &&
+      lastEmitted.score === state.score &&
+      lastEmitted.lives === state.lives &&
+      lastEmitted.level === state.level &&
+      lastEmitted.status === state.status &&
+      lastEmitted.extraStats?.[0]?.value === state.extraStats?.[0]?.value
+    ) {
+      return;
+    }
+    lastEmitted = state;
+    onStateChange(state);
   }
 
   function drawBlock(
@@ -286,16 +313,29 @@ export function createTetrisGame(
     const color = palette.pieces[colorIndex - 1];
     const isGhost = alpha !== undefined && alpha < 1;
     context.globalAlpha = alpha ?? 1;
+    const bx = x * size + 1;
+    const by = y * size + 1;
+    const bs = size - 2;
     // Glow tipo neón solo en bloques opacos (no en la ghost piece).
     if (palette.glow > 0 && !isGhost) {
-      context.shadowColor = color;
-      context.shadowBlur = palette.glow;
+      const sprite = getGlowSprite(
+        `tetris:block:${color}:${size}:${palette.glow}`,
+        bs,
+        bs,
+        palette.glow,
+        color,
+        (sctx) => {
+          sctx.fillStyle = color;
+          sctx.fillRect(0, 0, bs, bs);
+        },
+      );
+      drawGlowSprite(context, sprite, bx, by);
+    } else {
+      context.fillStyle = color;
+      context.fillRect(bx, by, bs, bs);
     }
-    context.fillStyle = color;
-    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-    context.shadowBlur = 0;
     context.fillStyle = palette.highlight;
-    context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+    context.fillRect(bx, by, bs, 4);
     context.globalAlpha = 1;
   }
 
@@ -364,15 +404,23 @@ export function createTetrisGame(
     lastTime = ts;
 
     if (!gameOver) {
-      dropAccum += dt;
-      if (dropAccum >= dropInterval) {
-        dropAccum = 0;
-        if (!collide(current.shape, current.x, current.y + 1)) {
-          current.y++;
-        } else {
+      const resting = collide(current.shape, current.x, current.y + 1);
+      if (resting) {
+        lockAccum += dt;
+        if (lockAccum >= LOCK_DELAY) {
+          lockAccum = 0;
+          dropAccum = 0;
           lockPiece();
+          notifyState();
         }
-        notifyState();
+      } else {
+        lockAccum = 0;
+        dropAccum += dt;
+        if (dropAccum >= dropInterval) {
+          dropAccum = 0;
+          current.y++;
+          notifyState();
+        }
       }
     }
 
@@ -394,6 +442,7 @@ export function createTetrisGame(
     gameOver = false;
     dropInterval = 1000;
     dropAccum = 0;
+    lockAccum = 0;
     next = randomPiece();
     spawn();
   }
