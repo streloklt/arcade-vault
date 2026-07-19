@@ -25,3 +25,9 @@ Listado de juegos jugables en Arcade Vault, según la tabla `games` de Supabase.
 - **Categoría:** Arcade
 - **Color:** Verde
 - **Descripción:** El clásico juego de la serpiente: guiála por el tablero, comé las frutas que aparecen y evitá chocar contra los bordes o tu propia cola. Cada fruta suma puntos y hace crecer tu serpiente.
+
+## Frogger
+
+- **Categoría:** Arcade
+- **Color:** Verde
+- **Descripción:** Guiá a la rana carril por carril esquivando el tráfico y cruzando el río sobre troncos y plataformas sin caer al agua. Cada avance hacia la meta suma puntos, contrarreloj y con vidas limitadas.

@@ -10,8 +10,11 @@ Plataforma para jugar online y competir por la mayor cantidad de puntos: catálo
 | Asteroids | Shooter   | Pulveriza asteroides en gravedad cero.                           |
 | Arkanoid  | Arcade    | Rebota la pelota y destruye muros de neón.                       |
 | Snake     | Arcade    | Comé frutas y crecé sin chocar con vos mismo.                    |
+| Frogger   | Arcade    | Cruzá tráfico y río sin que te atropellen ni te ahogues.         |
 
 Detalle completo de cada juego en [`JUEGOS.md`](./JUEGOS.md).
+
+Cada juego es jugable con teclado y con controles táctiles en pantallas móviles (D-pad + botones A/B), y expone 3 skins seleccionables (clásico, neón, retro) desde el HUD.
 
 ## Stack
 
@@ -67,13 +70,14 @@ Todavía no hay test runner configurado.
 
 ```
 app/                    # App Router: home, biblioteca, salón de la fama, juego/[id], auth, api/scores, api/contacto
-components/games/       # Un directorio por juego: engine.ts + <Slug>Canvas.tsx + registry.tsx (GAME_ENGINES)
-lib/                    # games.ts, scores.ts, data.ts (Supabase), supabase/{client,server,middleware}.ts
-specs/                  # Specs numeradas (01–09) de cada feature ya implementada
-references/             # Material de referencia (no es código de producción)
+components/games/       # Un directorio por juego: engine.ts + <Slug>Canvas.tsx + registry.tsx (GAME_ENGINES) + skins.ts + glowSprite.ts
+components/             # TouchControls.tsx, GamePlayer.tsx, Nav.tsx, etc.
+lib/                    # games.ts, scores.ts, data.ts (Supabase), storage.ts, useIsTouchDevice.ts, supabase/{client,server,middleware}.ts
+specs/                  # Specs numeradas (01–12) de cada feature ya implementada, más specs/game-jam/ por juego sumado
+references/             # Ledgers de los agentes y material de referencia (no es código de producción)
 ```
 
-Cada juego expone un motor (`engine.ts`, factory con estado en closures y `start/stop/restart/forceGameOver/destroy`) y un wrapper React (`forwardRef` + `useImperativeHandle`). `components/games/registry.tsx` mapea `id → { Canvas, initialState }`; `GamePlayer.tsx` resuelve por ese registro y no se toca al sumar un juego nuevo.
+Cada juego expone un motor (`engine.ts`, factory con estado en closures y `start/stop/restart/forceGameOver/destroy`) y un wrapper React (`forwardRef` + `useImperativeHandle`). `components/games/registry.tsx` mapea `id → { Canvas, initialState }`; `GamePlayer.tsx` resuelve por ese registro y no se toca al sumar un juego nuevo. Todos los juegos soportan controles táctiles (D-pad + A/B) y 3 skins seleccionables (clásico, neón, retro) persistidas en `localStorage`.
 
 ## Desarrollo spec-driven
 
